@@ -30,7 +30,7 @@ public class RobotDriver extends LinearOpMode {
         rightF  = hardwareMap.get(DcMotor.class, "rf");
         rightB  = hardwareMap.get(DcMotor.class, "rb");
 
-        belt    = hardwareMap.get(DcMotor.class, "beltDrive");
+        belt    = hardwareMap.get(DcMotor.class, "belt");
 
         lFlywheel    = hardwareMap.get(DcMotor.class, "leftFly");
         rFlywheel    = hardwareMap.get(DcMotor.class, "rightFly");
@@ -53,6 +53,14 @@ public class RobotDriver extends LinearOpMode {
         rightF.setDirection(DcMotor.Direction.FORWARD);
         rightB.setDirection(DcMotor.Direction.FORWARD);
 
+        leftF.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        leftB.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        rightF.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        rightB.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+
+        lFlywheel.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        rFlywheel.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+
         // Wait for the game to start (driver presses START)
         telemetry.addData("Status", "Initialized");
         telemetry.update();
@@ -60,11 +68,25 @@ public class RobotDriver extends LinearOpMode {
         waitForStart();
         runtime.reset();
 
+        boolean aPressed = false;       // Tracks if A is toggled ON or OFF
+        boolean previousAState = false; // Tracks the button state from the previous loop cycle
+
+        boolean yPressed = false;       // Tracks if Y is toggled ON or OFF
+        boolean previousYState = false; // Tracks the button state from the previous loop cycle
+
+        boolean xPressed = false;       // Tracks if X is toggled ON or OFF
+        boolean previousXState = false; // Tracks the button state from the previous loop cycle
+
+        boolean bPressed = false;       // Tracks if B is toggled ON or OFF
+        boolean previousBState = false; // Tracks the button state from the previous loop cycle
+
+
+
         // run until the end of the match (driver presses STOP)
         while (opModeIsActive()) {
             double intakeSpeed  = 0;
 
-            double liftoff      = gamepad1.right_trigger;
+            double liftoff      = 0;
             double beltSpeed    = 0;
 
             double max;
@@ -72,7 +94,7 @@ public class RobotDriver extends LinearOpMode {
             // POV Mode uses left joystick to go forward & strafe, and right joystick to rotate.
             double axial   = -gamepad1.left_stick_y;  // Note: pushing stick forward gives negative value
             double lateral =  gamepad1.left_stick_x;
-            double yaw     =  gamepad1.right_stick_x;
+            double yaw     =  -gamepad1.right_stick_x;
 
             // Combine the joystick requests for each axis-motion to determine each wheel's power.
             // Set up a variable for each drive wheel to save the power level for telemetry.
@@ -94,25 +116,74 @@ public class RobotDriver extends LinearOpMode {
                 backRightPower  /= max;
             }
 
-            boolean aPressed = false;
+            // Check if the 'a' button is currently pressed and wasn't pressed on the last loop iteration.
+            // This detects a single button press event.
+            if (gamepad1.a && !previousAState) {
+                // Flip the state of our toggle
+                aPressed = !aPressed;
+            }
 
-            if (gamepad1.a) {
-                if (aPressed) {
-                    intakeSpeed = 0;
-                    beltSpeed   = 0;
-                    aPressed    = false;
-                } else if (!aPressed) {
-                    intakeSpeed = 1;
-                    beltSpeed   = 1;
-                    aPressed    = true;
-                }
+            // Update the previous state for the next loop iteration.
+            previousAState = gamepad1.a;
+
+            if (gamepad1.y && !previousYState) {
+                // Flip the state of our toggle
+                yPressed = !yPressed;
+            }
+
+            // Update the previous state for the next loop iteration.
+            previousYState = gamepad1.y;
+
+            if (gamepad1.x && !previousXState) {
+                // Flip the state of our toggle
+                xPressed = !xPressed;
+            }
+
+            // Update the previous state for the next loop iteration.
+            previousXState = gamepad1.x;
+
+            // --- TOGGLE LOGIC ---
+            // This detects a single button press event for each button.
+            if (gamepad1.a && !previousAState) { aPressed = !aPressed; }
+            previousAState = gamepad1.a;
+
+            if (gamepad1.y && !previousYState) { yPressed = !yPressed; }
+            previousYState = gamepad1.y;
+
+            if (gamepad1.x && !previousXState) { xPressed = !xPressed; }
+            previousXState = gamepad1.x;
+
+            if (gamepad1.b && !previousBState) { bPressed = !bPressed; }
+            previousBState = gamepad1.b;
+
+            // --- ACTION LOGIC ---
+
+            // Set Intake and Belt speeds. X (reverse) overrides A (forward).
+            if (xPressed) {
+                intakeSpeed =  0.0; // Assuming intake reverses direction with belt
+                beltSpeed   = -0.6;
+            } else if (aPressed) {
+                intakeSpeed = -1.0;
+                beltSpeed   =  1.0;
+            } else {
+                intakeSpeed = 0.0;
+                beltSpeed   = 0.0;
+            }
+
+            // Set Flywheel speeds. B (0.47) overrides Y (0.43).
+            if (bPressed) {
+                liftoff = 0.46;
+            } else if (yPressed) {
+                liftoff = 0.41;
+            } else {
+                liftoff = 0.0;
             }
 
             intake.setPower(intakeSpeed);
 
             belt.setPower(beltSpeed);
-            lFlywheel.setPower(liftoff);
-            rFlywheel.setPower(-liftoff);
+            lFlywheel.setPower(-liftoff);
+            rFlywheel.setPower(liftoff);
 
             // Send calculated power to wheels
             leftF.setPower(frontLeftPower);
@@ -124,6 +195,9 @@ public class RobotDriver extends LinearOpMode {
             telemetry.addData("Status", "Run Time: " + runtime.toString());
             telemetry.addData("Front left/Right", "%4.2f, %4.2f", frontLeftPower, frontRightPower);
             telemetry.addData("Back  left/Right", "%4.2f, %4.2f", backLeftPower, backRightPower);
+            telemetry.addData("Flywheel", "%4.2f", liftoff);
+            telemetry.addData("Belt", "%4.2f", beltSpeed);
+            telemetry.addData("Intake", "%4.2f", intakeSpeed);
             telemetry.update();
         }
     }
