@@ -1,10 +1,17 @@
 package org.firstinspires.ftc.teamcode;
 
+import com.qualcomm.hardware.sparkfun.SparkFunOTOS;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.util.ElapsedTime;
+
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
 
 @TeleOp(name="Driver", group="Linear OpMode")
 public class RobotDriver extends LinearOpMode {
@@ -16,13 +23,25 @@ public class RobotDriver extends LinearOpMode {
     private DcMotor rightF      = null;
     private DcMotor rightB      = null;
     private DcMotor belt        = null;
-    private DcMotor lFlywheel   = null;
-    private DcMotor rFlywheel   = null;
+    private DcMotorEx lFlywheel   = null;
+    private DcMotorEx rFlywheel   = null;
     private CRServo intake      = null;
+    private GoBildaPinpointDriver odo;
+
+    public static final double MAX_TICKS_PER_SECOND = 5376;
+    public double flywheelTargetVelocity = 0.0;
+
 
 
     @Override
     public void runOpMode() {
+
+        odo = hardwareMap.get(GoBildaPinpointDriver.class,"odo");
+        odo.setOffsets(-137.5, -195.0); //these are tuned for 3110-0002-0001 Product Insight #1
+        odo.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
+        odo.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.REVERSED, GoBildaPinpointDriver.EncoderDirection.FORWARD);
+
+        odo.resetPosAndIMU();
 
         // HARDWAAAAAAAAREEEE MAAAAAAAAAAAAAAAAAAPPPPIIIIIIIIING
         leftF   = hardwareMap.get(DcMotor.class, "lf");
@@ -32,8 +51,8 @@ public class RobotDriver extends LinearOpMode {
 
         belt    = hardwareMap.get(DcMotor.class, "belt");
 
-        lFlywheel    = hardwareMap.get(DcMotor.class, "leftFly");
-        rFlywheel    = hardwareMap.get(DcMotor.class, "rightFly");
+        lFlywheel    = hardwareMap.get(DcMotorEx.class, "leftFly");
+        rFlywheel    = hardwareMap.get(DcMotorEx.class, "rightFly");
 
         intake  = hardwareMap.get(CRServo.class, "intake");
 
@@ -58,8 +77,12 @@ public class RobotDriver extends LinearOpMode {
         rightF.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         rightB.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
-        lFlywheel.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        rFlywheel.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        lFlywheel.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        rFlywheel.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        lFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        rFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
+        lFlywheel.setDirection(DcMotorSimple.Direction.REVERSE);
 
         // Wait for the game to start (driver presses START)
         telemetry.addData("Status", "Initialized");
@@ -80,13 +103,24 @@ public class RobotDriver extends LinearOpMode {
         boolean bPressed = false;       // Tracks if B is toggled ON or OFF
         boolean previousBState = false; // Tracks the button state from the previous loop cycle
 
+        boolean dPadDownToggle = false;
+        boolean previousDPadState = false;
+        boolean adjustSpeed = true;
 
+        double initLiftoff      = 0.20;
+        double liftoff          = initLiftoff;
+
+        flywheelTargetVelocity = MAX_TICKS_PER_SECOND * liftoff;
 
         // run until the end of the match (driver presses STOP)
         while (opModeIsActive()) {
+
+            odo.update();
+
+            Pose2D pos = odo.getPosition();
+
             double intakeSpeed  = 0;
 
-            double liftoff      = 0;
             double beltSpeed    = 0;
 
             double max;
@@ -156,34 +190,55 @@ public class RobotDriver extends LinearOpMode {
             if (gamepad1.b && !previousBState) { bPressed = !bPressed; }
             previousBState = gamepad1.b;
 
+            if (gamepad1.dpad_down && !previousDPadState) { dPadDownToggle = !dPadDownToggle; }
+            previousDPadState = gamepad1.dpad_down;
+
             // --- ACTION LOGIC ---
 
             // Set Intake and Belt speeds. X (reverse) overrides A (forward).
             if (xPressed) {
-                intakeSpeed =  0.0; // Assuming intake reverses direction with belt
                 beltSpeed   = -0.6;
             } else if (aPressed) {
-                intakeSpeed = -1.0;
                 beltSpeed   =  1.0;
+            } else if (aPressed && rFlywheel.getPower() > 0.0){
+                beltSpeed   = 0.8;
             } else {
-                intakeSpeed = 0.0;
                 beltSpeed   = 0.0;
             }
 
-            // Set Flywheel speeds. B (0.47) overrides Y (0.43).
-            if (bPressed) {
-                liftoff = 0.46;
-            } else if (yPressed) {
-                liftoff = 0.41;
+            if (dPadDownToggle) {
+                intakeSpeed = -1.0;
             } else {
-                liftoff = 0.0;
+                intakeSpeed = 0.0;
+            }
+
+            //Increment and Decrement Flywheel Speed
+            if (gamepad1.b && liftoff >= 0.18 && adjustSpeed) {
+                liftoff -= 0.01;
+                adjustSpeed = false;
+            }
+            if (gamepad1.bWasReleased()) {
+                adjustSpeed = true;
+            }
+            if (gamepad1.y & liftoff <= 0.21 && adjustSpeed) {
+                liftoff += 0.01;
+                adjustSpeed = false;
+            }
+            if (gamepad1.yWasReleased()) {
+                adjustSpeed = true;
             }
 
             intake.setPower(intakeSpeed);
 
             belt.setPower(beltSpeed);
-            lFlywheel.setPower(-liftoff);
-            rFlywheel.setPower(liftoff);
+
+            if (gamepad1.left_bumper) {
+                lFlywheel.setVelocity(MAX_TICKS_PER_SECOND * liftoff);
+                rFlywheel.setVelocity(MAX_TICKS_PER_SECOND * liftoff);
+            } else {
+                lFlywheel.setVelocity(0.0);
+                rFlywheel.setVelocity(0.0);
+            }
 
             // Send calculated power to wheels
             leftF.setPower(frontLeftPower);
@@ -195,9 +250,13 @@ public class RobotDriver extends LinearOpMode {
             telemetry.addData("Status", "Run Time: " + runtime.toString());
             telemetry.addData("Front left/Right", "%4.2f, %4.2f", frontLeftPower, frontRightPower);
             telemetry.addData("Back  left/Right", "%4.2f, %4.2f", backLeftPower, backRightPower);
-            telemetry.addData("Flywheel", "%4.2f", liftoff);
+            telemetry.addData("Flywheel Target Percent", "%4.2f", liftoff * 100);
+            telemetry.addData("Flywheel Target RPM", "%4.2f", MAX_TICKS_PER_SECOND * liftoff);
+            telemetry.addData("Flywheel Left/Right", "%4.2f, %4.2f", rFlywheel.getVelocity(), lFlywheel.getVelocity());
             telemetry.addData("Belt", "%4.2f", beltSpeed);
             telemetry.addData("Intake", "%4.2f", intakeSpeed);
+            telemetry.addData("Position", "X: %.2f in, %.2f in", pos.getX(DistanceUnit.INCH), pos.getY(DistanceUnit.INCH));
+            telemetry.addData("Heading", "%.2f degrees", pos.getHeading(AngleUnit.DEGREES));
             telemetry.update();
         }
     }
