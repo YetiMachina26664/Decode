@@ -55,7 +55,7 @@ public class RobotAuto extends LinearOpMode {
         odo = hardwareMap.get(GoBildaPinpointDriver.class,"odo");
         odo.setOffsets(-137.5, -195.0);
         odo.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
-        odo.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.REVERSED, GoBildaPinpointDriver.EncoderDirection.FORWARD);
+        odo.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.FORWARD, GoBildaPinpointDriver.EncoderDirection.FORWARD);
 
         odo.resetPosAndIMU();
 
