@@ -109,10 +109,8 @@ public class RobotDriver extends LinearOpMode {
 
         boolean adjustSpeed = true;         //Checks whether or not speed was adjusted
 
-        double initLiftoff      = 0.20;
-        double liftoff          = initLiftoff;
-
-        flywheelTargetVelocity = MAX_TICKS_PER_SECOND * liftoff;
+        double liftoffHigh = 0.21;
+        double liftoffLow = 0.17;
 
         // run until the end of the match (driver presses STOP)
         while (opModeIsActive()) {
@@ -216,15 +214,17 @@ public class RobotDriver extends LinearOpMode {
 
             //Increment and Decrement Flywheel Speed
             //max speed is 40% of max rotation, min is 10%
-            if (gamepad1.b && liftoff >= 0.1 && adjustSpeed) {
-                liftoff -= 0.01;
+            if (gamepad1.b && liftoffLow >= 0.1 && adjustSpeed) {
+                liftoffHigh -= 0.01;
+                liftoffLow -= 0.01;
                 adjustSpeed = false;
             }
             if (gamepad1.bWasReleased()) {
                 adjustSpeed = true;
             }
-            if (gamepad1.y & liftoff <= 0.4 && adjustSpeed) {
-                liftoff += 0.01;
+            if (gamepad1.y & liftoffHigh <= 0.4 && adjustSpeed) {
+                liftoffHigh += 0.01;
+                liftoffLow += 0.01;
                 adjustSpeed = false;
             }
             if (gamepad1.yWasReleased()) {
@@ -237,8 +237,11 @@ public class RobotDriver extends LinearOpMode {
             belt.setPower(beltSpeed);
 
             if (gamepad1.left_bumper) {
-                lFlywheel.setVelocity(MAX_TICKS_PER_SECOND * liftoff);
-                rFlywheel.setVelocity(MAX_TICKS_PER_SECOND * liftoff);
+                lFlywheel.setVelocity(MAX_TICKS_PER_SECOND * liftoffHigh);
+                rFlywheel.setVelocity(MAX_TICKS_PER_SECOND * liftoffHigh);
+            } else if (gamepad1.right_bumper) {
+                lFlywheel.setVelocity(MAX_TICKS_PER_SECOND * liftoffLow);
+                rFlywheel.setVelocity(MAX_TICKS_PER_SECOND * liftoffLow);
             } else {
                 lFlywheel.setVelocity(MAX_TICKS_PER_SECOND * -0.01);
                 rFlywheel.setVelocity(MAX_TICKS_PER_SECOND * -0.01);
@@ -255,9 +258,9 @@ public class RobotDriver extends LinearOpMode {
             telemetry.addData("Status", "Run Time: " + runtime.toString());
             telemetry.addData("Front left/Right", "%4.2f, %4.2f", frontLeftPower, frontRightPower);
             telemetry.addData("Back  left/Right", "%4.2f, %4.2f", backLeftPower, backRightPower);
-            telemetry.addData("Flywheel Target Percent", "%4.2f", liftoff * 100);
-            telemetry.addData("Flywheel Target RPM", "%4.2f", MAX_TICKS_PER_SECOND * liftoff);
-            telemetry.addData("Flywheel Left/Right", "%4.2f, %4.2f", rFlywheel.getVelocity(), lFlywheel.getVelocity());
+            telemetry.addData("Flywheel Target Percent LOW/HIGH", "%4.2f, %4.2f", liftoffLow * 100, liftoffHigh * 100);
+            telemetry.addData("Flywheel Target RPM LOW/HIGH", "%4.2f, %4.2f", MAX_TICKS_PER_SECOND * liftoffLow, MAX_TICKS_PER_SECOND * liftoffHigh);
+            telemetry.addData("Flywheel Velocity Left/Right", "%4.2f, %4.2f", rFlywheel.getVelocity(), lFlywheel.getVelocity());
             telemetry.addData("Belt", "%4.2f", beltSpeed);
             telemetry.addData("Intake", "%4.2f", intakeSpeed);
             telemetry.addData("Position", "X: %.2f in, %.2f in", pos.getX(DistanceUnit.INCH), pos.getY(DistanceUnit.INCH));
@@ -266,4 +269,3 @@ public class RobotDriver extends LinearOpMode {
         }
     }
 }
-// test change
