@@ -253,7 +253,7 @@ public class RDriverLocBased extends LinearOpMode {
 
         // Run until the end of the match (driver presses STOP)
         while (opModeIsActive()) {
-            //follower.update();
+            follower.update();
             // Update Odometry for tracking
             odo.update();
             // Get current robot pos for tracking
@@ -386,15 +386,27 @@ public class RDriverLocBased extends LinearOpMode {
                 rFlywheel.setVelocity(0);
             }
 
-            //while (gamepad1.left_trigger > 0) {
-            //    follower.followPath(paths.Path1);
-            //}
+            if (gamepad1.dpad_left & !follower.isBusy()) {
+                Pose targetPose = new Pose(15,15,Math.toRadians(180));
+                PathChain goToTarget = follower.pathBuilder()
+                        .addPath(new BezierLine(follower.getPose(), targetPose))
+                        .setLinearHeadingInterpolation(
+                                follower.getPose().getHeading(),
+                                targetPose.getHeading()
+                        )
+                        .build();
+                follower.followPath(goToTarget);
+            }
 
-            // Send previously calculated power to wheels
-            leftF.setPower(frontLeftPower);
-            rightF.setPower(frontRightPower);
-            leftB.setPower(backLeftPower);
-            rightB.setPower(backRightPower);
+            if (follower.isBusy()) {
+                //don't move the robot manually when the robot is following a path
+            } else {
+                // Send previously calculated power to wheels
+                leftF.setPower(frontLeftPower);
+                rightF.setPower(frontRightPower);
+                leftB.setPower(backLeftPower);
+                rightB.setPower(backRightPower);
+            }
 
             // Show the elapsed game time, wheel powers, flywheel velocity data, belt and intake speed, and positioning data
             telemetry.addData("Status", "Run Time: " + runtime.toString());
@@ -407,6 +419,8 @@ public class RDriverLocBased extends LinearOpMode {
             telemetry.addData("Intake", "%4.2f", intakeSpeed);
             telemetry.addData("Position", "X: %.2f in, %.2f in", pos.getX(DistanceUnit.INCH), pos.getY(DistanceUnit.INCH));
             telemetry.addData("Heading", "%.2f degrees", pos.getHeading(AngleUnit.DEGREES));
+            telemetry.addData("PedroPose", "X: %.2f in, %.2f in, %.2f degrees",
+                    follower.getPose().getX(), follower.getPose().getY(),Math.toDegrees(follower.getPose().getHeading()));
             telemetry.update();
             }
         }
