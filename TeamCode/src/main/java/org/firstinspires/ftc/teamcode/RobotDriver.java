@@ -88,6 +88,7 @@ public class RobotDriver extends LinearOpMode {
         telemetry.addData("Status", "Initialized");
         telemetry.update();
 
+        //wait for start
         waitForStart();
         runtime.reset();
 
