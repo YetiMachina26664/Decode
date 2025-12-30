@@ -99,87 +99,28 @@ public class RDriverLocBased extends LinearOpMode {
         return Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2));
     }
 
-    //defines pedropath to orient the robot to align with the target heading
-    public static class Orient {
-        RDriverLocBased obj = new RDriverLocBased();
-
-        public PathChain Path1;
-
-        public Orient(Follower follower) {
-            Path1 = follower
-                    .pathBuilder()
-                    .addPath(
-                            new BezierLine(follower.getPose(), follower.getPose())
-
-                    )
-                    .setLinearHeadingInterpolation(follower.getHeading(), Math.toRadians(obj.getTargetAngle(obj.isBlueTeam, follower.getPose())))
-                    .build();
-        }
-    }
-
     //function to run while in teleop
     @Override
     public void runOpMode() {
         isBlueTeam = false;
         backStart = false;
 
-    // 1. Create the follower object
+        // 1. Create the follower object
         follower = Constants.createFollower(hardwareMap);
-        //paths = new Orient(follower);
-    // 2. Initialize and fully configure your odometry driver
+
+        // 2. Initialize and fully configure your odometry driver
         odo = hardwareMap.get(GoBildaPinpointDriver.class, "odo");
         odo.setOffsets(-140, 0, DistanceUnit.MM);
         odo.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
         odo.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.FORWARD, GoBildaPinpointDriver.EncoderDirection.FORWARD);
         //odo.recalibrateIMU();
         odo.resetPosAndIMU();
-// 4. Now set the starting pose in the follower (which now uses your odo)
+        // 4. Now set the starting pose in the follower (which now uses your odo)
         if (isBlueTeam && backStart) {
             follower.setStartingPose(new Pose(56, 17, 90)); //blue start against wall
         } else {
             follower.setStartingPose(new Pose(88, 17, 90)); //red start against wall
         }
-
-// 5. UNknown value - delete this step? Or add to previous? ~~~Finally, create your paths. They will now be based on the correct, unified odometry.
-        //paths = new RDriverLocBased.Orient(follower);
-
-        //odo.recalibrateIMU();
-
-        //if (isBlueTeam && backStart) {
-        //    follower.setStartingPose(new Pose(28, 133, 324));
-        //} else if (isBlueTeam && !backStart) {
-        //    follower.setStartingPose(new Pose(56, 17, 90));
-        //} else if (!isBlueTeam && backStart) {
-        //    follower.setStartingPose(new Pose(116, 133, 216));
-        //} else {
-        //    follower.setStartingPose(new Pose(88, 17, 90));
-        //}
-
-        //paths = new RDriverLocBased.Orient(follower);
-
-        // ... inside while(opModeIsActive())
-
-// Get the latest data from your hardware
-        //GoBilda currentPos2D provides X, Y, heading infor to pedropathing (currentPos)
-        //follower.update();
-        //odo.update();
-        //Pose2D currentPos2D = odo.getPosition();
-        //Pose currentPos = new Pose(currentPos2D.getX(DistanceUnit.INCH), currentPos2D.getY(DistanceUnit.INCH), currentPos2D.getHeading(AngleUnit.DEGREES));
-
-// ... rest of your loop (flywheel, intake, telemetry, etc.) ...
-        //telemetry.addData("Auto-Aim Active", gamepad1.right_bumper);
-        //telemetry.addData("Target Heading", "%.2f deg", Math.toDegrees(getTargetAngle(isBlueTeam, currentPos)));
-// ... your other telemetry ...
-        //telemetry.update();
-
-        // Odometry initialization and offsets, etc.
-        //odo = hardwareMap.get(GoBildaPinpointDriver.class,"odo");
-        //odo.setOffsets(-137.5, -195.0); // These are tuned for 3110-0002-0001 Product Insight #1
-        //odo.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
-        //odo.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.FORWARD, GoBildaPinpointDriver.EncoderDirection.FORWARD);
-
-        //odo.resetPosAndIMU(); */
-        //        paths = new Orient(follower);
 
         // Mapping the hardware to previous declarations
         leftF = hardwareMap.get(DcMotor.class, "lf");
@@ -299,6 +240,16 @@ public class RDriverLocBased extends LinearOpMode {
                 backRightPower /= max;
             }
 
+            if (follower.isBusy()) {
+                //don't move the robot manually when the robot is following a path
+            } else {
+                // Send previously calculated power to wheels
+                leftF.setPower(frontLeftPower);
+                rightF.setPower(frontRightPower);
+                leftB.setPower(backLeftPower);
+                rightB.setPower(backRightPower);
+            }
+
             // --- TOGGLE LOGIC ---
             // This detects a single button press event for each button.
             if (gamepad1.a && !previousAState) { aPressed = !aPressed; }
@@ -387,29 +338,21 @@ public class RDriverLocBased extends LinearOpMode {
             }
 
             if (gamepad1.dpad_left & !follower.isBusy()) {
-                Pose targetPose = new Pose(15,15,Math.toRadians(180));
-                PathChain goToTarget = follower.pathBuilder()
-                        .addPath(new BezierLine(follower.getPose(), targetPose))
+                double targetHeading = Math.toRadians(getTargetAngle(isBlueTeam, follower.getPose()));
+                telemetry.addData("target heading","%.2f degrees", Math.toDegrees(targetHeading));
+                telemetry.update();
+                PathChain rotateToGoal = follower.pathBuilder()
+                        .addPath(new BezierLine(follower.getPose(), follower.getPose()))
                         .setLinearHeadingInterpolation(
-                                follower.getPose().getHeading(),
-                                targetPose.getHeading()
-                        )
+                                follower.getPose().getHeading(),targetHeading)
                         .build();
-                follower.followPath(goToTarget);
+                follower.followPath(rotateToGoal);
             }
 
-            if (follower.isBusy()) {
-                //don't move the robot manually when the robot is following a path
-            } else {
-                // Send previously calculated power to wheels
-                leftF.setPower(frontLeftPower);
-                rightF.setPower(frontRightPower);
-                leftB.setPower(backLeftPower);
-                rightB.setPower(backRightPower);
-            }
 
             // Show the elapsed game time, wheel powers, flywheel velocity data, belt and intake speed, and positioning data
             telemetry.addData("Status", "Run Time: " + runtime.toString());
+            //telemetry.addData("target heading","%4.2f", Math.toRadians(getTargetAngle(isBlueTeam, follower.getPose())))
             telemetry.addData("Front left/Right", "%4.2f, %4.2f", frontLeftPower, frontRightPower);
             telemetry.addData("Back  left/Right", "%4.2f, %4.2f", backLeftPower, backRightPower);
             telemetry.addData("Flywheel Target Percent LOW/HIGH", "%4.2f, %4.2f", liftoffLow * 100, liftoffHigh * 100);
@@ -421,6 +364,7 @@ public class RDriverLocBased extends LinearOpMode {
             telemetry.addData("Heading", "%.2f degrees", pos.getHeading(AngleUnit.DEGREES));
             telemetry.addData("PedroPose", "X: %.2f in, %.2f in, %.2f degrees",
                     follower.getPose().getX(), follower.getPose().getY(),Math.toDegrees(follower.getPose().getHeading()));
+            telemetry.addData("Auto-Aim Active", follower.isBusy() ?"Yes" : "No");
             telemetry.update();
             }
         }
