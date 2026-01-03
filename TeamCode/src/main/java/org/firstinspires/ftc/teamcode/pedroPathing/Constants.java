@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.pedroPathing;
 
+import com.pedropathing.control.FilteredPIDFCoefficients;
+import com.pedropathing.control.PIDFCoefficients;
 import com.pedropathing.follower.Follower;
 import com.pedropathing.follower.FollowerConstants;
 import com.pedropathing.ftc.FollowerBuilder;
@@ -17,8 +19,8 @@ import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 public class Constants {
 
     public static PinpointConstants localizerConstants = new PinpointConstants()
-            .forwardPodY(-5.5)
-            .strafePodX(-5.5)
+            .forwardPodY(4.25)
+            .strafePodX(3.5)
             .distanceUnit(DistanceUnit.INCH)
             .hardwareMapName("odo")
             .encoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD)
@@ -30,16 +32,23 @@ public class Constants {
             .rightRearMotorName("rb")
             .leftRearMotorName("lb")
             .leftFrontMotorName("lf")
-            .xVelocity(70.2166)
-            .yVelocity(61.1047)
-            .leftFrontMotorDirection(DcMotorSimple.Direction.REVERSE)
-            .leftRearMotorDirection(DcMotorSimple.Direction.REVERSE)
-            .rightFrontMotorDirection(DcMotorSimple.Direction.FORWARD)
-            .rightRearMotorDirection(DcMotorSimple.Direction.FORWARD);
+            .xVelocity(52.553)
+            .yVelocity(42.248)
+            .leftFrontMotorDirection(DcMotorSimple.Direction.FORWARD)
+            .leftRearMotorDirection(DcMotorSimple.Direction.FORWARD)
+            .rightFrontMotorDirection(DcMotorSimple.Direction.REVERSE)
+            .rightRearMotorDirection(DcMotorSimple.Direction.REVERSE);
     public static FollowerConstants followerConstants = new FollowerConstants()
-            .mass(10.8);
+            .mass(10.8)
+            .forwardZeroPowerAcceleration(-34.431)
+            .lateralZeroPowerAcceleration(-59.724)
+            .translationalPIDFCoefficients(new PIDFCoefficients(1.0,0.0,0.0,0.0))
+            .headingPIDFCoefficients(new PIDFCoefficients(1.0,0.0,0.0,0.0))
+            .drivePIDFCoefficients(new FilteredPIDFCoefficients(1.0,0.0,0.0,0.0,0.0))
+            .centripetalScaling(0.0005)
+            ;
 
-    public static PathConstraints pathConstraints = new PathConstraints(0.6, 60, 0.8, 0.8);
+    public static PathConstraints pathConstraints = new PathConstraints(0.6, 60, 1.4, 1.0);
 
     public static Follower createFollower(HardwareMap hardwareMap) {
         return new FollowerBuilder(followerConstants, hardwareMap)

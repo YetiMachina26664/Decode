@@ -458,6 +458,9 @@ class LateralVelocityTuner extends OpMode {
         telemetryM.debug("After running the distance, the robot will cut power from the drivetrain and display the strafe velocity.");
         telemetryM.debug("Press B on Gamepad 1 to stop.");
         telemetryM.update(telemetry);
+        telemetryM.debug("x:" + follower.getPose().getX());
+        telemetryM.debug("y:" + follower.getPose().getY());
+        telemetryM.debug("heading:" + follower.getPose().getHeading());
         follower.update();
         drawOnlyCurrent();
     }
@@ -497,6 +500,10 @@ class LateralVelocityTuner extends OpMode {
                 double currentVelocity = Math.abs(follower.getVelocity().dot(new Vector(1, Math.PI / 2)));
                 velocities.add(currentVelocity);
                 velocities.remove(0);
+                telemetryM.update(telemetry);
+                telemetryM.debug("x:" + follower.getPose().getX());
+                telemetryM.debug("y:" + follower.getPose().getY());
+                telemetryM.debug("heading:" + follower.getPose().getHeading());
             }
         } else {
             stopRobot();
@@ -1014,6 +1021,11 @@ class Line extends OpMode {
 
         telemetryM.debug("Driving Forward?: " + forward);
         telemetryM.update(telemetry);
+        telemetryM.debug("x:" + follower.getPose().getX());
+        telemetryM.debug("y:" + follower.getPose().getY());
+        telemetryM.debug("heading:" + follower.getPose().getHeading());
+        telemetryM.debug("Distance traveled:" + follower.getDistanceTraveledOnPath());
+        telemetryM.debug("Distance remaining:" + follower.getDistanceRemaining());
     }
 }
 
