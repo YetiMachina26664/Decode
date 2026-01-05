@@ -3,6 +3,7 @@ package org.firstinspires.ftc.teamcode;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 @Autonomous(name="AutoTemporary", group="Auto")
@@ -35,10 +36,10 @@ public class TemporaryAuto extends LinearOpMode {
         // when you first test your robot, push the left joystick forward and observe the direction the wheels turn.
         // Reverse the direction (flip FORWARD <-> REVERSE ) of any wheel that runs backward
         // Keep testing until ALL the wheels move the robot forward when you push the left joystick forward.
-        leftF.setDirection(DcMotor.Direction.REVERSE);
-        leftB.setDirection(DcMotor.Direction.REVERSE);
-        rightF.setDirection(DcMotor.Direction.FORWARD);
-        rightB.setDirection(DcMotor.Direction.FORWARD);
+        leftF.setDirection(DcMotor.Direction.FORWARD);
+        leftB.setDirection(DcMotor.Direction.FORWARD);
+        rightF.setDirection(DcMotor.Direction.REVERSE);
+        rightB.setDirection(DcMotor.Direction.REVERSE);
 
         leftF.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         leftB.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
