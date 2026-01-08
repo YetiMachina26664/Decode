@@ -27,7 +27,7 @@ public class Constants {
             .forwardEncoderDirection(GoBildaPinpointDriver.EncoderDirection.FORWARD)
             .strafeEncoderDirection(GoBildaPinpointDriver.EncoderDirection.FORWARD);
     public static MecanumConstants driveConstants = new MecanumConstants()
-            .maxPower(0.05)
+            .maxPower(0.8)
             .rightFrontMotorName("rf")
             .rightRearMotorName("rb")
             .leftRearMotorName("lb")
@@ -42,9 +42,9 @@ public class Constants {
             .mass(10.8)
             .forwardZeroPowerAcceleration(-34.431)
             .lateralZeroPowerAcceleration(-59.724)
-            .translationalPIDFCoefficients(new PIDFCoefficients(1.0,0.0,0.0,0.0))
-            .headingPIDFCoefficients(new PIDFCoefficients(1.0,0.0,0.0,0.0))
-            .drivePIDFCoefficients(new FilteredPIDFCoefficients(0.1,0.0,0.0,0.0,0.0))
+            .translationalPIDFCoefficients(new PIDFCoefficients(0.035,0.0,0.0025,0.01))
+            .headingPIDFCoefficients(new PIDFCoefficients(2.0,0.0,0.1,0.01))
+            .drivePIDFCoefficients(new FilteredPIDFCoefficients(0.02,0.0,0.001,0.0,0.1))
             .centripetalScaling(0.0005)
             ;
 
