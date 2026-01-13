@@ -184,6 +184,9 @@ public class RDriverLocBased extends LinearOpMode {
         boolean dPadUpToggle = false;         //Tracks if D-Pad Up is toggled ON or OFF
         boolean previousDPadUpState = false;  //Tracks the button state from the previous loop cycle
 
+        boolean dPadULeftToggle = false;         //Tracks if D-Pad Up is toggled ON or OFF
+        boolean previousDPadLeftState = false;  //Tracks the button state from the previous loop cycle
+
         boolean adjustSpeed = true;         //Checks whether or not speed was adjusted
 
         // Initial flywheel percentages for far and close shots respectively
@@ -270,6 +273,9 @@ public class RDriverLocBased extends LinearOpMode {
             if (gamepad1.dpad_up && !previousDPadUpState) { dPadUpToggle = !dPadUpToggle; }
             previousDPadUpState = gamepad1.dpad_up;
 
+            if (gamepad1.dpad_left && !previousDPadLeftState) { dPadULeftToggle = !dPadULeftToggle; }
+            previousDPadLeftState = gamepad1.dpad_left;
+
             // --- ACTION LOGIC ---
             //Moved from outside of the While OpMode is active, do we need a while loop? Can we use
             //a pedropath to get in position without changing how we handle the wheels
@@ -337,22 +343,14 @@ public class RDriverLocBased extends LinearOpMode {
                 rFlywheel.setVelocity(0);
             }
 
-            if (gamepad1.dpad_left & !follower.isBusy()) {
+            if (dPadULeftToggle & !follower.isBusy()) {
                 double targetHeading = Math.toRadians(getTargetAngle(isBlueTeam, follower.getPose()));
-                telemetry.addData("target heading","%.2f degrees", Math.toDegrees(targetHeading));
-                telemetry.update();
-                PathChain rotateToGoal = follower.pathBuilder()
-                        .addPath(new BezierLine(follower.getPose(), follower.getPose()))
-                        .setLinearHeadingInterpolation(
-                                follower.getPose().getHeading(),targetHeading)
-                        .build();
-                follower.followPath(rotateToGoal);
+                follower.turnTo(targetHeading);
             }
 
 
             // Show the elapsed game time, wheel powers, flywheel velocity data, belt and intake speed, and positioning data
             telemetry.addData("Status", "Run Time: " + runtime.toString());
-            //telemetry.addData("target heading","%4.2f", Math.toRadians(getTargetAngle(isBlueTeam, follower.getPose())))
             telemetry.addData("Front left/Right", "%4.2f, %4.2f", frontLeftPower, frontRightPower);
             telemetry.addData("Back  left/Right", "%4.2f, %4.2f", backLeftPower, backRightPower);
             telemetry.addData("Flywheel Target Percent LOW/HIGH", "%4.2f, %4.2f", liftoffLow * 100, liftoffHigh * 100);
@@ -365,6 +363,7 @@ public class RDriverLocBased extends LinearOpMode {
             telemetry.addData("PedroPose", "X: %.2f in, %.2f in, %.2f degrees",
                     follower.getPose().getX(), follower.getPose().getY(),Math.toDegrees(follower.getPose().getHeading()));
             telemetry.addData("Auto-Aim Active", follower.isBusy() ?"Yes" : "No");
+            telemetry.addData("Target Heading","%4.2f", Math.toRadians(getTargetAngle(isBlueTeam, follower.getPose())));
             telemetry.update();
             }
         }
