@@ -35,8 +35,8 @@ public class PedroTest extends OpMode {
         panelsTelemetry.update(telemetry);
     }
 
-    @Override
-    public void init_loop() {}
+    // @Override
+    // public void init_loop() {}
 
     @Override
     public void start() {
@@ -62,11 +62,12 @@ public class PedroTest extends OpMode {
 
         public Paths(Follower follower) {
             Path1 = follower
-                    .pathBuilder()
-                    .addPath(
-                            new BezierLine(new Pose(56, 8), new Pose(56, 33))
-                    )
-                    .build();
+                .pathBuilder()
+                .addPath(
+                    new BezierLine(new Pose(56, 8), new Pose(56, 33))
+                )
+                .setLinearHeadingInterpolation(Math.toRadians(90), Math.toRadians(180))
+                .build();
         }
     }
 

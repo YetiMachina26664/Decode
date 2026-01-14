@@ -60,10 +60,10 @@ public class RobotDriver extends LinearOpMode {
 
 
         // Set motor directions to drive correctly
-        leftF.setDirection(DcMotor.Direction.REVERSE);
-        leftB.setDirection(DcMotor.Direction.REVERSE);
-        rightF.setDirection(DcMotor.Direction.FORWARD);
-        rightB.setDirection(DcMotor.Direction.FORWARD);
+        leftF.setDirection(DcMotor.Direction.FORWARD);
+        leftB.setDirection(DcMotor.Direction.FORWARD);
+        rightF.setDirection(DcMotor.Direction.REVERSE);
+        rightB.setDirection(DcMotor.Direction.REVERSE);
 
         //Zero power behaviors for motors
         leftF.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -135,7 +135,7 @@ public class RobotDriver extends LinearOpMode {
             // POV Mode uses left joystick to go forward & strafe, and right joystick to rotate.
             double axial   = -gamepad1.left_stick_y;  // Note: pushing stick forward gives negative value
             double lateral =  gamepad1.left_stick_x;
-            double yaw     = -gamepad1.right_stick_x * 0.66; // Note: Multiplied by 0.66 as turning is sensitive, slows it down
+            double yaw     = gamepad1.right_stick_x * 0.66; // Note: Multiplied by 0.66 as turning is sensitive, slows it down
 
             // Combine the joystick requests for each axis-motion to determine each wheel's power.
             // Set up a variable for each drive wheel to save the power level for telemetry.
