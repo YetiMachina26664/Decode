@@ -15,6 +15,8 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
 import java.util.function.Supplier;
@@ -64,8 +66,8 @@ public class OdoDriver extends OpMode {
 
     public static final double MAX_TICKS_PER_SECOND = 5376;
 
-    public Pose REDGOAL = new Pose(134, 135);
-    public Pose BLUEGOAL = new Pose(9, 135);
+    public Pose REDGOAL = new Pose(144, 0);
+    public Pose BLUEGOAL = new Pose(144, 144);
 
     boolean isBlueTeam = false;
 
@@ -90,13 +92,14 @@ public class OdoDriver extends OpMode {
     public double getTargetAngle(boolean blueTeam, Follower follower) {
         double tgtY, tgtX;
         if (blueTeam) {
-            tgtY = BLUEGOAL.getY() - follower.getPose().getY();
-            tgtX = BLUEGOAL.getX()- follower.getPose().getX();
+            tgtY = Math.abs(BLUEGOAL.getY() - follower.getPose().getY());
+            tgtX = Math.abs(BLUEGOAL.getX() - follower.getPose().getX());
+            return Math.atan2(tgtX, tgtY);
         } else {
-            tgtY = REDGOAL.getY() - follower.getPose().getY();
-            tgtX = REDGOAL.getX() - follower.getPose().getX();
+            tgtY = Math.abs(REDGOAL.getY() - follower.getPose().getY());
+            tgtX = Math.abs(REDGOAL.getX() - follower.getPose().getX());
+            return -Math.atan2(tgtX, tgtY);
         }
-        return Math.atan2(tgtY, tgtX);
     }
 
     //calculation for the straightline distance between the robot and the goal
@@ -107,7 +110,8 @@ public class OdoDriver extends OpMode {
     @Override
     public void init() {
         follower = Constants.createFollower(hardwareMap);
-        follower.setStartingPose(startingPose == null ? new Pose() : startingPose);
+        follower.setStartingPose(new Pose(9, 72, 0));
+        //follower.setStartingPose(isBlueTeam ? new Pose() : startingPose);
         follower.update();
         telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
 
@@ -227,8 +231,8 @@ public class OdoDriver extends OpMode {
         // Increment and Decrement Flywheel Speed
         // max speed is 40% of max rotation, min is 10% of min rotation.
         if (gamepad1.b && liftoffLow >= 0.1 && adjustSpeed) {
-            liftoffHigh -= 0.01;
-            liftoffLow -= 0.01;
+            liftoffHigh -= 0.001;
+            liftoffLow -= 0.001;
             adjustSpeed = false;
         }
         // Check if speed was adjusted.
@@ -236,8 +240,8 @@ public class OdoDriver extends OpMode {
             adjustSpeed = true;
         }
         if (gamepad1.y & liftoffHigh <= 0.4 && adjustSpeed) {
-            liftoffHigh += 0.01;
-            liftoffLow += 0.01;
+            liftoffHigh += 0.001;
+            liftoffLow += 0.001;
             adjustSpeed = false;
         }
         // Check if speed was adjusted.
@@ -247,6 +251,10 @@ public class OdoDriver extends OpMode {
 
         if (gamepad1.dpad_left && !follower.isBusy()) {
             follower.turnTo(tgtTheta);
+        }
+
+        if (gamepad1.dpad_right) {
+            follower.startTeleopDrive();
         }
 
         // Set Intake power percentage
@@ -269,6 +277,18 @@ public class OdoDriver extends OpMode {
             lFlywheel.setVelocity(0);
             rFlywheel.setVelocity(0);
         }
+
+        telemetry.addData("Flywheel Target Percent LOW/HIGH", "%4.2f, %4.2f", liftoffLow * 100, liftoffHigh * 100);
+        telemetry.addData("Flywheel Target RPM LOW/HIGH", "%4.2f, %4.2f", MAX_TICKS_PER_SECOND * liftoffLow, MAX_TICKS_PER_SECOND * liftoffHigh);
+        telemetry.addData("Flywheel Velocity Left/Right", "%4.2f, %4.2f", rFlywheel.getVelocity(), lFlywheel.getVelocity());
+        telemetry.addData("Belt", "%4.2f", beltSpeed);
+        telemetry.addData("Intake", "%4.2f", intakeSpeed);
+        telemetry.addData("Heading", "%.2f degrees", follower.getHeading());
+        telemetry.addData("PedroPose", "X: %.2f in, \nY: %.2f in, \nHeading %.2f degrees", follower.getPose().getX(), follower.getPose().getY(),Math.toDegrees(follower.getPose().getHeading()));
+        telemetry.addData("Auto-Aim Active", follower.isBusy() ? "Yes" : "No");
+        telemetry.addData("Target Heading","%4.2f Rads", tgtTheta);
+        telemetry.addData("Target Distance","%4.2f in", distFromGoal);
+        telemetry.update();
 
         telemetryM.debug("position", follower.getPose());
         telemetryM.debug("velocity", follower.getVelocity());
