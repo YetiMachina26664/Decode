@@ -9,6 +9,7 @@ import com.pedropathing.geometry.Pose;
 import com.pedropathing.paths.HeadingInterpolator;
 import com.pedropathing.paths.Path;
 import com.pedropathing.paths.PathChain;
+import com.qualcomm.hardware.rev.RevColorSensorV3;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.ColorSensor;
@@ -29,7 +30,7 @@ public class OdoDriver extends OpMode {
     public static Pose startingPose;
     private TelemetryManager telemetryM;
 
-    private ColorSensor color;
+    private RevColorSensorV3 color;
 
     private DcMotor belt = null;
     private DcMotorEx lFlywheel = null;
@@ -117,11 +118,11 @@ public class OdoDriver extends OpMode {
     }
 
     public double powerRegressionPoly(double x) {
-        return (0.000004 * Math.pow(x, 2)) - (0.000414 * x) + 0.18503;
+        return (0.0014 * Math.pow(x, 2)) + (2.5179 * x) + 788.18;
     }
 
     public double powerRegressionLin(double x) {
-        return (0.000571 * x) + 0.13182;
+        return (3.0058 * x) + 756.46;
     }
 
     public Pose getStartingPose() {
@@ -161,15 +162,14 @@ public class OdoDriver extends OpMode {
     @Override
     public void init() {
         follower = Constants.createFollower(hardwareMap);
-        follower.setStartingPose(getStartingPose());
+        color = hardwareMap.get(RevColorSensorV3.class, "color");
+        follower.setStartingPose(getStartingPose() == null ? new Pose(9, 72, 0) : getStartingPose());
         //follower.setStartingPose(isBlueTeam ? new Pose() : startingPose);
         follower.update();
         telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
 
         //pathChain = () -> follower.pathBuilder()
         //        .addPath(new Path(new BezierLine()))
-
-        color = hardwareMap.get(ColorSensor.class, "color");
 
         //Hardware map declarations
         belt = hardwareMap.get(DcMotor.class, "belt");
@@ -336,11 +336,11 @@ public class OdoDriver extends OpMode {
         //liftoff = powerRegression(getDist(isBlueTeam, follower.getPose()));
         // Set flywheel velocities (LB = High power shot, RB = Low power shot)
         if (gamepad1.left_bumper) {
-            lFlywheel.setVelocity(MAX_TICKS_PER_SECOND * liftoffPoly);
-            rFlywheel.setVelocity(MAX_TICKS_PER_SECOND * liftoffPoly);
+            lFlywheel.setVelocity(liftoffPoly);
+            rFlywheel.setVelocity(liftoffPoly);
         } else if (gamepad1.right_bumper) {
-            lFlywheel.setVelocity(MAX_TICKS_PER_SECOND * liftoffLin);
-            rFlywheel.setVelocity(MAX_TICKS_PER_SECOND * liftoffLin);
+            lFlywheel.setVelocity(liftoffLin);
+            rFlywheel.setVelocity(liftoffLin);
         } else if (dPadUpToggle) { // Make sure that reverse motion can be toggled so we don't get fouled :/
             lFlywheel.setVelocity(MAX_TICKS_PER_SECOND * -0.01);
             rFlywheel.setVelocity(MAX_TICKS_PER_SECOND * -0.01);
@@ -349,9 +349,8 @@ public class OdoDriver extends OpMode {
             rFlywheel.setVelocity(0);
         }
 
-        telemetry.addData("Flywheel Target Percent LIN/POLY", "%4.2f, %4.2f", liftoffLin * 100, liftoffPoly * 100);
-        telemetry.addData("Flywheel Target RPM LIN/POLY", "%4.2f, %4.2f", MAX_TICKS_PER_SECOND * liftoffLin, MAX_TICKS_PER_SECOND * liftoffPoly);
-        telemetry.addData("Flywheel Velocity Left/Right", "%4.2f, %4.2f", rFlywheel.getVelocity(), lFlywheel.getVelocity());
+        telemetry.addData("Flywheel Target TPS LIN/POLY", "%4.2f, %4.2f", liftoffLin, liftoffPoly);
+        telemetry.addData("Flywheel TPS Left/Right", "%4.2f, %4.2f", rFlywheel.getVelocity(), lFlywheel.getVelocity());
         telemetry.addData("Belt", "%4.2f", beltSpeed);
         telemetry.addData("Intake", "%4.2f", intakeSpeed);
         telemetry.addData("Heading", "%.2f degrees", follower.getHeading()*57.296);
@@ -361,9 +360,6 @@ public class OdoDriver extends OpMode {
         telemetry.addData("Target Distance","%4.2f in", distFromGoal);
         telemetry.addData("GOAL POS","X: %4.2f in, Y: %4.2f in", REDGOAL.getX(), REDGOAL.getY());
         telemetry.addData("isBusy",follower.isBusy());
-        telemetry.addData("isTurning",follower.isTurning());
-        telemetry.addData("heading error",follower.getHeadingError()*57.296);
-        telemetry.addData("translational error",follower.getTranslationalError());
         telemetry.update();
 
         telemetryM.debug("position", follower.getPose());
