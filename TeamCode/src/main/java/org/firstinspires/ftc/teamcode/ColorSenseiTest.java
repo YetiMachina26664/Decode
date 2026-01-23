@@ -1,12 +1,13 @@
 package org.firstinspires.ftc.teamcode;
 
+import com.qualcomm.hardware.rev.RevColorSensorV3;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.ColorSensor;
 
 @TeleOp
 public class ColorSenseiTest extends LinearOpMode {
-    ColorSensor color;
+    RevColorSensorV3 color;
 
     @Override
     public void runOpMode() {
@@ -15,7 +16,7 @@ public class ColorSenseiTest extends LinearOpMode {
                 && (color.blue() > 57 && color.blue() < 77)) {
 
         }
-        color = hardwareMap.get(ColorSensor.class, "color");
+        color = hardwareMap.get(RevColorSensorV3.class, "color");
         waitForStart();
         while (opModeIsActive()) {
             telemetry.addData("Red", color.red());
