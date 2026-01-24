@@ -4,32 +4,29 @@ import com.bylazar.configurables.annotations.Configurable;
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.telemetry.TelemetryManager;
 import com.pedropathing.follower.Follower;
-import com.pedropathing.geometry.BezierLine;
 import com.pedropathing.geometry.Pose;
-import com.pedropathing.paths.HeadingInterpolator;
-import com.pedropathing.paths.Path;
 import com.pedropathing.paths.PathChain;
+import com.pedropathing.util.Timer;
 import com.qualcomm.hardware.rev.RevColorSensorV3;
+import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.hardware.ColorSensor;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.NormalizedColorSensor;
 import com.qualcomm.robotcore.hardware.NormalizedRGBA;
 
-import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
-import java.util.function.Supplier;
 
 @Configurable
-@TeleOp(name="Odometry Driver", group="Linear OpMode")
-public class OdoDriver extends OpMode {
+@Autonomous(name="Comp Auto")
+public class OdoAuto extends OpMode {
+
+    private Timer pathTimer, actionTimer, opmodeTimer;
+    private int pathState;
     private Follower follower;
-    public static Pose startingPose;
     private TelemetryManager telemetryM;
 
     private RevColorSensorV3 color;
@@ -39,28 +36,7 @@ public class OdoDriver extends OpMode {
     private DcMotorEx rFlywheel = null;
     private DcMotor intake = null;
 
-    boolean aPressed;       // Tracks if A is toggled ON or OFF
-    boolean previousAState; // Tracks the button state from the previous loop cycle
 
-    boolean yPressed;       // Tracks if Y is toggled ON or OFF
-    boolean previousYState; // Tracks the button state from the previous loop cycle
-
-    boolean xPressed;       // Tracks if X is toggled ON or OFF
-    boolean previousXState; // Tracks the button state from the previous loop cycle
-
-    boolean bPressed;       // Tracks if B is toggled ON or OFF
-    boolean previousBState; // Tracks the button state from the previous loop cycle
-
-    boolean dPadDownToggle;         //Tracks if D-Pad Down is toggled ON or OFF
-    boolean previousDPadDownState;  //Tracks the button state from the previous loop cycle
-
-    boolean dPadUpToggle;         //Tracks if D-Pad Up is toggled ON or OFF
-    boolean previousDPadUpState;  //Tracks the button state from the previous loop cycle
-
-    boolean dPadULeftToggle;         //Tracks if D-Pad Up is toggled ON or OFF
-    boolean previousDPadLeftState;  //Tracks the button state from the previous loop cycle
-
-    boolean adjustSpeed;         //Checks whether or not speed was adjusted
 
     //Initial flywheel percentages for far and close shots respectively
     double liftoffPoly;
@@ -86,6 +62,7 @@ public class OdoDriver extends OpMode {
     boolean isAtPose = false;
 
     boolean isBlueTeam;
+    boolean backStart;
 
     //function to get the distance from the robot to the goal, relies on calcHypotenuse function
     public double getDist(boolean blueTeam, Follower follower) {
@@ -138,32 +115,53 @@ public class OdoDriver extends OpMode {
                 && (green > 72 && green < 92)
                 && (blue > 39 && blue < 59)) {
             isBlueTeam = false;
-            pose = new Pose(9, 88, 0);
+            backStart = false;
+            pose = new Pose(9, 56, 0);
             return pose;
             //Cyan
         } else if ((red > 35 && red < 55)
                 && (green > 124 && green < 144)
                 && (blue > 244 && blue <= 255)) {
             isBlueTeam = true;
-            pose = new Pose(9, 56, 0);
+            backStart = false;
+            pose = new Pose(9, 88, 0);
             return pose;
             //Ivory
         } else if ((red > 245 && red <= 255)
                 && (green > 245 && green <= 255)
                 && (blue > 245 && blue <= 255)) {
             isBlueTeam = false;
-            pose = new Pose(124, 22, -0.925025);
+            backStart = true;
+            pose = new Pose(124, 122, -0.925025);
             return pose;
             //Wood (Chat)
         } else if ((red > 88 && red < 108)
                 && (green > 140 && green < 160)
                 && (blue > 81 && blue < 101)) {
             isBlueTeam = true;
-            pose = new Pose(124, 122, 0.925025);
+            backStart = true;
+            pose = new Pose(124, 22, 0.925025);
             return pose;
         }
         return pose;
     }
+
+    public PathChain getPathChain() {
+        PathChain pathChain;
+        Pose startPose;
+        if (isBlueTeam && backStart) {
+            startPose = new Pose(124, 22, 0.925025);
+        } else if (isBlueTeam && !backStart) {
+            startPose = new Pose(9, 88, 0);
+        } else if (!isBlueTeam && backStart) {
+            startPose = new Pose(124, 122, -0.925025);
+        } else {
+            startPose = new Pose(9, 56, 0);
+        }
+        return pathChain = follower.pathBuilder()
+                .addPath(startPose, )
+    };
+
 
     @Override
     public void init() {
@@ -199,30 +197,6 @@ public class OdoDriver extends OpMode {
 
         //Reverse left flywheel to oppose right
         lFlywheel.setDirection(DcMotorSimple.Direction.REVERSE);
-
-        aPressed = false;       // Tracks if A is toggled ON or OFF
-        previousAState = false; // Tracks the button state from the previous loop cycle
-
-        yPressed = false;       // Tracks if Y is toggled ON or OFF
-        previousYState = false; // Tracks the button state from the previous loop cycle
-
-        xPressed = false;       // Tracks if X is toggled ON or OFF
-        previousXState = false; // Tracks the button state from the previous loop cycle
-
-        bPressed = false;       // Tracks if B is toggled ON or OFF
-        previousBState = false; // Tracks the button state from the previous loop cycle
-
-        dPadDownToggle = false;         //Tracks if D-Pad Down is toggled ON or OFF
-        previousDPadDownState = false;  //Tracks the button state from the previous loop cycle
-
-        dPadUpToggle = false;         //Tracks if D-Pad Up is toggled ON or OFF
-        previousDPadUpState = false;  //Tracks the button state from the previous loop cycle
-
-        dPadULeftToggle = false;         //Tracks if D-Pad Up is toggled ON or OFF
-        previousDPadLeftState = false;  //Tracks the button state from the previous loop cycle
-
-        adjustSpeed = true;         //Checks whether or not speed was adjusted
-
     }
 
     public void init_loop() {
@@ -246,7 +220,7 @@ public class OdoDriver extends OpMode {
 
     @Override
     public void start() {
-        follower.startTeleopDrive();
+        setPathState(0);
     }
 
     @Override
