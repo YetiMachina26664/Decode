@@ -4,30 +4,21 @@ import com.bylazar.configurables.annotations.Configurable;
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.telemetry.TelemetryManager;
 import com.pedropathing.follower.Follower;
-import com.pedropathing.geometry.BezierLine;
 import com.pedropathing.geometry.Pose;
-import com.pedropathing.paths.HeadingInterpolator;
-import com.pedropathing.paths.Path;
-import com.pedropathing.paths.PathChain;
 import com.qualcomm.hardware.rev.RevColorSensorV3;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.hardware.ColorSensor;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.NormalizedColorSensor;
 import com.qualcomm.robotcore.hardware.NormalizedRGBA;
 
-import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
-import java.util.function.Supplier;
-
 @Configurable
-@TeleOp(name="Odometry Driver", group="Linear OpMode")
-public class OdoDriver extends OpMode {
+@TeleOp(name="Odometry Driver (Auto)", group="Linear OpMode")
+public class OdoDriverPostAuto extends OpMode {
     private Follower follower;
     public static Pose startingPose;
     private TelemetryManager telemetryM;
@@ -139,28 +130,28 @@ public class OdoDriver extends OpMode {
                 && (green > 72 && green < 92)
                 && (blue > 39 && blue < 59)) {
             isBlueTeam = false;
-            pose = new Pose(9, 56, 0);
+            pose = new Pose(30.000, 56.000, -Math.toRadians(40));
             return pose;
             //Cyan
         } else if ((red > 35 && red < 55)
                 && (green > 124 && green < 144)
                 && (blue > 244 && blue <= 255)) {
             isBlueTeam = true;
-            pose = new Pose(9, 88, 0);
+            pose = new Pose(30.000, 88.000, Math.toRadians(40));
             return pose;
             //Ivory
         } else if ((red > 245 && red <= 255)
                 && (green > 245 && green <= 255)
                 && (blue > 245 && blue <= 255)) {
             isBlueTeam = false;
-            pose = new Pose(124, 22, -Math.toRadians(45));
+            pose = new Pose(100.000, 24.000, -Math.toRadians(25));
             return pose;
             //Wood (Chat)
         } else if ((red > 88 && red < 108)
                 && (green > 140 && green < 160)
                 && (blue > 81 && blue < 101)) {
             isBlueTeam = true;
-            pose = new Pose(124, 122, Math.toRadians(45));
+            pose = new Pose(100.000, 120.000, Math.toRadians(25));
             return pose;
         }
         return pose;
@@ -384,11 +375,11 @@ public class OdoDriver extends OpMode {
         telemetry.addData("Belt", "%4.2f", beltSpeed);
         telemetry.addData("Intake", "%4.2f", intakeSpeed);
         telemetry.addData("Heading", "%.2f degrees", follower.getHeading()*57.296);
-        telemetry.addData("PedroPose", "X: %.2f in, \nY: %.2f in, \nHeading %.2f degrees", follower.getPose().getX(), follower.getPose().getY(), Math.toDegrees(follower.getPose().getHeading()));
+        telemetry.addData("PedroPose", "X: %.2f in, \nY: %.2f in, \nHeading %.2f degrees", follower.getPose().getX(), follower.getPose().getY(),Math.toDegrees(follower.getPose().getHeading()));
         telemetry.addData("Auto-Aim Active", follower.isBusy() ? "Yes" : "No");
         telemetry.addData("Target Heading","%4.2f degrees", tgtTheta*57.296);
         telemetry.addData("Target Distance","%4.2f in", distFromGoal);
-        telemetry.addData("GOAL POS", isBlueTeam ? BLUEGOAL.getPose() : REDGOAL.getPose());
+        telemetry.addData("GOAL POS","X: %4.2f in, Y: %4.2f in", REDGOAL.getX(), REDGOAL.getY());
         telemetry.addData("isBusy",follower.isBusy());
         telemetry.update();
 
