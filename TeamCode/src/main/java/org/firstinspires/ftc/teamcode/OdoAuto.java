@@ -4,7 +4,9 @@ import com.bylazar.configurables.annotations.Configurable;
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.telemetry.TelemetryManager;
 import com.pedropathing.follower.Follower;
+import com.pedropathing.geometry.BezierLine;
 import com.pedropathing.geometry.Pose;
+import com.pedropathing.paths.Path;
 import com.pedropathing.paths.PathChain;
 import com.pedropathing.util.Timer;
 import com.qualcomm.hardware.rev.RevColorSensorV3;
@@ -16,6 +18,7 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.NormalizedColorSensor;
 import com.qualcomm.robotcore.hardware.NormalizedRGBA;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
@@ -23,6 +26,7 @@ import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 @Configurable
 @Autonomous(name="Comp Auto")
 public class OdoAuto extends OpMode {
+    private ElapsedTime runtime = new ElapsedTime();
 
     private Timer pathTimer, actionTimer, opmodeTimer;
     private int pathState;
@@ -48,8 +52,19 @@ public class OdoAuto extends OpMode {
 
     public static final double MAX_TICKS_PER_SECOND = 5376;
     public static final double MAX_TICKS_BELT = 88;
-    public Pose REDGOAL = new Pose(144, 0);
-    public Pose BLUEGOAL = new Pose(144, 144);
+    public static final Pose REDGOAL = new Pose(144, 0);
+    public static final Pose BLUEGOAL = new Pose(144, 144);
+
+    //initial poses
+    public static final Pose redBackStart = new Pose(124.000, 22.000, -Math.toRadians(54));
+    public static final Pose redFrontStart = new Pose(9.000, 56.000, Math.toRadians(0));
+    public static final Pose blueBackStart = new Pose(124.000, 122.000, Math.toRadians(54));
+    public static final Pose blueFrontStart = new Pose(9.000, 88.000, Math.toRadians(0));
+    //final poses
+    public static final Pose redBackEnd = new Pose(100.000, 24.000, -Math.toRadians(25));
+    public static final Pose redFrontEnd = new Pose(30.000, 56.000, -Math.toRadians(40));
+    public static final Pose blueBackEnd = new Pose(100.000, 120.000, Math.toRadians(25));
+    public static final Pose blueFrontEnd = new Pose(30.000, 88.000, Math.toRadians(40));
 
     public Pose tempPose = new Pose(0,0,0);
 
@@ -63,6 +78,11 @@ public class OdoAuto extends OpMode {
 
     boolean isBlueTeam;
     boolean backStart;
+
+    Path blueTeamFront;
+    Path redTeamFront;
+    Path blueTeamBack;
+    Path redTeamBack;
 
     //function to get the distance from the robot to the goal, relies on calcHypotenuse function
     public double getDist(boolean blueTeam, Follower follower) {
@@ -132,7 +152,7 @@ public class OdoAuto extends OpMode {
                 && (blue > 245 && blue <= 255)) {
             isBlueTeam = false;
             backStart = true;
-            pose = new Pose(124, 122, -0.925025);
+            pose = new Pose(124, 22, -0.925025);
             return pose;
             //Wood (Chat)
         } else if ((red > 88 && red < 108)
@@ -140,44 +160,32 @@ public class OdoAuto extends OpMode {
                 && (blue > 81 && blue < 101)) {
             isBlueTeam = true;
             backStart = true;
-            pose = new Pose(124, 22, 0.925025);
+            pose = new Pose(124, 122, 0.925025);
             return pose;
         }
         return pose;
     }
-
-    public PathChain getPathChain() {
-        PathChain pathChain;
-        Pose startPose;
-        if (isBlueTeam && backStart) {
-            startPose = new Pose(124, 22, 0.925025);
-        } else if (isBlueTeam && !backStart) {
-            startPose = new Pose(9, 88, 0);
-        } else if (!isBlueTeam && backStart) {
-            startPose = new Pose(124, 122, -0.925025);
-        } else {
-            startPose = new Pose(9, 56, 0);
-        }
-        return pathChain = follower.pathBuilder()
-                .addPath(startPose, )
-    };
-
 
     @Override
     public void init() {
         follower = Constants.createFollower(hardwareMap);
 
         color = hardwareMap.get(RevColorSensorV3.class, "color");
-        /*NormalizedColorSensor normalizedSensor = color;
-        normalizedSensor.setGain(40);
-        NormalizedRGBA colors = normalizedSensor.getNormalizedColors();
 
-        follower.setStartingPose(getStartingPose(colors));*/
         follower.update();
         telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
 
-        //pathChain = () -> follower.pathBuilder()
-        //        .addPath(new Path(new BezierLine()))
+        blueTeamBack = new Path(new BezierLine(blueBackStart, blueBackEnd));
+        blueTeamBack.setLinearHeadingInterpolation(blueBackStart.getHeading(), blueBackEnd.getHeading());
+
+        blueTeamFront = new Path(new BezierLine(blueFrontStart, blueFrontEnd));
+        blueTeamFront.setLinearHeadingInterpolation(blueFrontStart.getHeading(), blueFrontEnd.getHeading());
+
+        redTeamBack = new Path(new BezierLine(redBackStart, redBackEnd));
+        redTeamBack.setLinearHeadingInterpolation(redBackStart.getHeading(), redBackEnd.getHeading());
+
+        redTeamFront = new Path(new BezierLine(redFrontStart, redFrontEnd));
+        redTeamFront.setLinearHeadingInterpolation(redFrontStart.getHeading(), redFrontEnd.getHeading());
 
         //Hardware map declarations
         belt = hardwareMap.get(DcMotor.class, "belt");
@@ -220,149 +228,49 @@ public class OdoAuto extends OpMode {
 
     @Override
     public void start() {
-        setPathState(0);
+        runtime.reset();
     }
 
     @Override
     public void loop() {
+        if (runtime.seconds() >= 4) {
+            follower.pausePathFollowing();
+        }
+
         follower.update();
         telemetryM.update();
 
-        follower.setTeleOpDrive(
-                -gamepad1.left_stick_y,
-                -gamepad1.left_stick_x,
-                -gamepad1.right_stick_x,
-                true
-        );
-
-
-        //tgtTheta = getTargetAngle(isBlueTeam, follower);
-        distFromGoal = getDist(isBlueTeam, follower);
-        hypotenuse = calcHypotenuse(follower.getPose().getX(), follower.getPose().getY());
-
-        // --- TOGGLE LOGIC ---
-        // This detects a single button press event for each button.
-        if (gamepad1.a && !previousAState) { aPressed = !aPressed; }
-        previousAState = gamepad1.a;
-
-        if (gamepad1.y && !previousYState) { yPressed = !yPressed; }
-        previousYState = gamepad1.y;
-
-        if (gamepad1.x && !previousXState) { xPressed = !xPressed; }
-        previousXState = gamepad1.x;
-
-        if (gamepad1.b && !previousBState) { bPressed = !bPressed; }
-        previousBState = gamepad1.b;
-
-        if (gamepad1.dpad_down && !previousDPadDownState) { dPadDownToggle = !dPadDownToggle; }
-        previousDPadDownState = gamepad1.dpad_down;
-
-        if (gamepad1.dpad_up && !previousDPadUpState) { dPadUpToggle = !dPadUpToggle; }
-        previousDPadUpState = gamepad1.dpad_up;
-
-        if (gamepad1.dpad_left && !previousDPadLeftState) { dPadULeftToggle = !dPadULeftToggle; }
-        previousDPadLeftState = gamepad1.dpad_left;
-
-        // --- ACTION LOGIC ---
-        //Moved from outside of the While OpMode is active, do we need a while loop? Can we use
-        //a pedropath to get in position without changing how we handle the wheels
-        //use the orient function??
-
-        // Set Belt speed. X (reverse) overrides A (forward).
-        //Do we want an encoder for the belt motor so that we have a constant speed, not subject to batter
-        //battery power control can impact speed that the balls hit the flywheels
-        if (xPressed) {
-            beltSpeed = 0.5;
-        } else if (aPressed && rFlywheel.getVelocity() > 0.0) {
-            beltSpeed = -0.5;
-        } else if (aPressed) {
-            beltSpeed = -0.95;
-        } else {
-            beltSpeed = 0.0;
-        }
-
-        // Set intake speed.
-        if (dPadDownToggle) {
-            intakeSpeed = 1.0;
-        } else {
-            intakeSpeed = 0.0;
-        }
-
-        // Increment and Decrement Flywheel Speed
-        // max speed is 40% of max rotation, min is 10% of min rotation.
-        /* if (gamepad1.b && liftoffLow >= 0.1 && adjustSpeed) {
-            liftoffHigh -= 0.001;
-            liftoffLow -= 0.001;
-            adjustSpeed = false;
-        }
-        // Check if speed was adjusted.
-        if (gamepad1.bWasReleased()) {
-            adjustSpeed = true;
-        }
-        if (gamepad1.y & liftoffHigh <= 0.4 && adjustSpeed) {
-            liftoffHigh += 0.001;
-            liftoffLow += 0.001;
-            adjustSpeed = false;
-        }
-        // Check if speed was adjusted.
-        if (gamepad1.yWasReleased()) {
-            adjustSpeed = true;
-        }
-
-        // Check if speed was adjusted.
-        if (gamepad1.yWasReleased()) {
-            adjustSpeed = true;
-        }*/
+        tgtTheta = getTargetAngle(isBlueTeam, follower);
 
         distFromGoal = getDist(isBlueTeam, follower);
 
         liftoffPoly = powerRegressionPoly(distFromGoal);
         liftoffLin = powerRegressionLin(distFromGoal);
 
+        follower.update();
 
-        if (gamepad1.dpad_left && !follower.isBusy()) {
-            tgtTheta = getTargetAngle(isBlueTeam, follower);
-            follower.turnTo(tgtTheta);
-            //follower.holdPoint(new Pose(follower.getPose().getX(), follower.getPose().getY(), tgtTheta));
-            isAtPose = follower.atPose(tempPose,1,1,.01);
-        }
-
-        if (gamepad1.dpad_right) {
-            follower.startTeleopDrive();
-        }
-
-        // Set Intake power percentage
-        intake.setPower(intakeSpeed);
-        // Set belt power percentage
-        belt.setPower(beltSpeed);
-
-        //liftoff = powerRegression(getDist(isBlueTeam, follower.getPose()));
-        // Set flywheel velocities (LB = High power shot, RB = Low power shot)
-        if (gamepad1.left_bumper) {
-            lFlywheel.setVelocity(liftoffPoly);
-            rFlywheel.setVelocity(liftoffPoly);
-        } else if (gamepad1.right_bumper) {
-            lFlywheel.setVelocity(liftoffLin);
-            rFlywheel.setVelocity(liftoffLin);
-        } else if (dPadUpToggle) { // Make sure that reverse motion can be toggled so we don't get fouled :/
-            lFlywheel.setVelocity(MAX_TICKS_PER_SECOND * -0.01);
-            rFlywheel.setVelocity(MAX_TICKS_PER_SECOND * -0.01);
-        } else { // Set 0 by default.
-            lFlywheel.setVelocity(0);
-            rFlywheel.setVelocity(0);
+        if (isBlueTeam && backStart) {
+            follower.followPath(blueTeamBack, true);
+        } else if (isBlueTeam && !backStart) {
+            follower.followPath(blueTeamFront, true);
+        } else if (!isBlueTeam && backStart) {
+            follower.followPath(redTeamBack, true);
+        } else if (!isBlueTeam && !backStart) {
+            follower.followPath(redTeamFront, true);
         }
 
         telemetry.addData("Flywheel Target TPS LIN/POLY", "%4.2f, %4.2f", liftoffLin, liftoffPoly);
         telemetry.addData("Flywheel TPS Left/Right", "%4.2f, %4.2f", rFlywheel.getVelocity(), lFlywheel.getVelocity());
         telemetry.addData("Belt", "%4.2f", beltSpeed);
         telemetry.addData("Intake", "%4.2f", intakeSpeed);
-        telemetry.addData("Heading", "%.2f degrees", follower.getHeading()*57.296);
+        telemetry.addData("Heading", "%.2f degrees", Math.toDegrees(follower.getHeading()));
         telemetry.addData("PedroPose", "X: %.2f in, \nY: %.2f in, \nHeading %.2f degrees", follower.getPose().getX(), follower.getPose().getY(),Math.toDegrees(follower.getPose().getHeading()));
         telemetry.addData("Auto-Aim Active", follower.isBusy() ? "Yes" : "No");
-        telemetry.addData("Target Heading","%4.2f degrees", tgtTheta*57.296);
+        telemetry.addData("Target Heading","%4.2f degrees", Math.toDegrees(tgtTheta));
         telemetry.addData("Target Distance","%4.2f in", distFromGoal);
         telemetry.addData("GOAL POS","X: %4.2f in, Y: %4.2f in", REDGOAL.getX(), REDGOAL.getY());
         telemetry.addData("isBusy",follower.isBusy());
+        telemetry.addData("Runtime", "%4.2f", runtime.seconds());
         telemetry.update();
 
         telemetryM.debug("position", follower.getPose());
@@ -373,7 +281,6 @@ public class OdoAuto extends OpMode {
         telemetryM.debug("Target V % Linear", liftoffLin);
         telemetryM.debug("belt", beltSpeed);
         telemetryM.debug("intake", intakeSpeed);
-        telemetryM.debug("adjustSpeed", adjustSpeed);
         telemetryM.debug("isAtPose", isAtPose);
     }
 }
