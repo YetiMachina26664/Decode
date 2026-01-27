@@ -17,7 +17,7 @@ import com.qualcomm.robotcore.hardware.NormalizedRGBA;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
 @Configurable
-@TeleOp(name="Odometry Driver (Auto)", group="Linear OpMode")
+@TeleOp(name="Odometry Driver Post Auto", group="Linear OpMode")
 public class OdoDriverPostAuto extends OpMode {
     private Follower follower;
     public static Pose startingPose;
@@ -25,10 +25,20 @@ public class OdoDriverPostAuto extends OpMode {
 
     private RevColorSensorV3 color;
 
+    
+
     private DcMotor belt = null;
     private DcMotorEx lFlywheel = null;
     private DcMotorEx rFlywheel = null;
     private DcMotor intake = null;
+
+    
+    // DRIVE MOTORS
+    private DcMotor lf = null;
+    private DcMotor lb = null;
+    private DcMotor rf = null;
+    private DcMotor rb = null;
+
 
     boolean aPressed;       // Tracks if A is toggled ON or OFF
     boolean previousAState; // Tracks the button state from the previous loop cycle
@@ -178,6 +188,24 @@ public class OdoDriverPostAuto extends OpMode {
         lFlywheel = hardwareMap.get(DcMotorEx.class, "leftFly");
         rFlywheel = hardwareMap.get(DcMotorEx.class, "rightFly");
         intake = hardwareMap.get(DcMotor.class, "intake");
+
+
+        // *** NEW: map drive motors ***
+        lf = hardwareMap.get(DcMotor.class, "lf");
+        lb = hardwareMap.get(DcMotor.class, "lb");
+        rf = hardwareMap.get(DcMotor.class, "rf");
+        rb = hardwareMap.get(DcMotor.class, "rb");
+
+        // *** NEW: force drive motors to RUN_WITHOUT_ENCODER ***
+        lf.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        lb.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        rf.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        rb.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+
+        lf.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        lb.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        rf.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        rb.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         //Zero power behaviors for Flywheels
         lFlywheel.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);

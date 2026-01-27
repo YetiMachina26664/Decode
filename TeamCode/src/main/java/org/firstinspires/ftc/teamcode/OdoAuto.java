@@ -24,7 +24,7 @@ import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
 
 @Configurable
-@Autonomous(name="Comp Auto")
+@Autonomous(name="Competition Auto")
 public class OdoAuto extends OpMode {
     private ElapsedTime runtime = new ElapsedTime();
 
@@ -40,7 +40,11 @@ public class OdoAuto extends OpMode {
     private DcMotorEx rFlywheel = null;
     private DcMotor intake = null;
 
-
+    // motor declarations - copilot instructed to add
+    private DcMotor lf = null;
+    private DcMotor lb = null;
+    private DcMotor rf = null;
+    private DcMotor rb = null;
 
     //Initial flywheel percentages for far and close shots respectively
     double liftoffPoly;
@@ -66,8 +70,6 @@ public class OdoAuto extends OpMode {
     public static final Pose blueBackEnd = new Pose(100.000, 120.000, Math.toRadians(25));
     public static final Pose blueFrontEnd = new Pose(30.000, 88.000, Math.toRadians(40));
 
-    public Pose tempPose = new Pose(0,0,0);
-
     double distFromGoal;
     double tgtTheta;
     double hypotenuse;
@@ -75,6 +77,8 @@ public class OdoAuto extends OpMode {
     double XTemp;
     double YTemp;
     boolean isAtPose = false;
+    private boolean pathStarted = false;
+    private boolean pathFinished = false;
 
     boolean isBlueTeam;
     boolean backStart;
@@ -193,6 +197,25 @@ public class OdoAuto extends OpMode {
         rFlywheel = hardwareMap.get(DcMotorEx.class, "rightFly");
         intake = hardwareMap.get(DcMotor.class, "intake");
 
+
+        // *** NEW: map drive motors ***
+        lf = hardwareMap.get(DcMotor.class, "lf");
+        lb = hardwareMap.get(DcMotor.class, "lb");
+        rf = hardwareMap.get(DcMotor.class, "rf");
+        rb = hardwareMap.get(DcMotor.class, "rb");
+
+        // *** NEW: force drive motors to RUN_WITHOUT_ENCODER ***
+        lf.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        lb.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        rf.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        rb.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+
+        lf.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        lb.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        rf.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        rb.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+
+
         //Zero power behaviors for Flywheels
         lFlywheel.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         rFlywheel.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -233,31 +256,44 @@ public class OdoAuto extends OpMode {
 
     @Override
     public void loop() {
-        if (runtime.seconds() >= 4) {
-            follower.pausePathFollowing();
-        }
+        //if (runtime.seconds() >= 4) {
+        //    follower.pausePathFollowing();
+        //}
 
         follower.update();
         telemetryM.update();
 
-        tgtTheta = getTargetAngle(isBlueTeam, follower);
+        //modified so that it only goes through this followpath command once
+        if (!pathStarted) {
+            if (isBlueTeam && backStart) {
+                follower.followPath(blueTeamBack, true);
+            } else if (isBlueTeam && !backStart) {
+                follower.followPath(blueTeamFront, true);
+            } else if (!isBlueTeam && backStart) {
+                follower.followPath(redTeamBack, true);
+            } else if (!isBlueTeam && !backStart) {
+                follower.followPath(redTeamFront, true);
+            }
+            pathStarted = true;
+        }
 
+        //Check if the follower is still busy following the path
+        if (pathStarted && !pathFinished && !follower.isBusy()) {
+            pathFinished = true;
+        }
+
+        if (pathFinished) {
+            // Optional: once done, you can hold current pose or hold the goal pose
+            Pose current = follower.getPose();
+            // hold where you are
+            follower.holdPoint(new Pose(current.getX(), current.getY(), current.getHeading()));
+        }
+
+        //Get TPS value for shooting
+        tgtTheta = getTargetAngle(isBlueTeam, follower); //use this to compare to current pose and only shoot if within threshold
         distFromGoal = getDist(isBlueTeam, follower);
-
         liftoffPoly = powerRegressionPoly(distFromGoal);
         liftoffLin = powerRegressionLin(distFromGoal);
-
-        follower.update();
-
-        if (isBlueTeam && backStart) {
-            follower.followPath(blueTeamBack, true);
-        } else if (isBlueTeam && !backStart) {
-            follower.followPath(blueTeamFront, true);
-        } else if (!isBlueTeam && backStart) {
-            follower.followPath(redTeamBack, true);
-        } else if (!isBlueTeam && !backStart) {
-            follower.followPath(redTeamFront, true);
-        }
 
         telemetry.addData("Flywheel Target TPS LIN/POLY", "%4.2f, %4.2f", liftoffLin, liftoffPoly);
         telemetry.addData("Flywheel TPS Left/Right", "%4.2f, %4.2f", rFlywheel.getVelocity(), lFlywheel.getVelocity());
@@ -265,6 +301,8 @@ public class OdoAuto extends OpMode {
         telemetry.addData("Intake", "%4.2f", intakeSpeed);
         telemetry.addData("Heading", "%.2f degrees", Math.toDegrees(follower.getHeading()));
         telemetry.addData("PedroPose", "X: %.2f in, \nY: %.2f in, \nHeading %.2f degrees", follower.getPose().getX(), follower.getPose().getY(),Math.toDegrees(follower.getPose().getHeading()));
+        telemetry.addData("Target Pose","X: %.2f in, \nY: %.2f in, \nHeading %.2f degrees", follower.getCurrentTargetPose().getX(),follower.getCurrentTargetPose().getY(),Math.toDegrees(follower.getCurrentTargetPose().getHeading()));
+        telemetry.addData("At Target Pose?", follower.atTarget());
         telemetry.addData("Auto-Aim Active", follower.isBusy() ? "Yes" : "No");
         telemetry.addData("Target Heading","%4.2f degrees", Math.toDegrees(tgtTheta));
         telemetry.addData("Target Distance","%4.2f in", distFromGoal);
