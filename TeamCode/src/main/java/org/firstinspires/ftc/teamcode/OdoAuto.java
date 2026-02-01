@@ -215,7 +215,6 @@ public class OdoAuto extends OpMode {
         rf.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         rb.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
-
         //Zero power behaviors for Flywheels
         lFlywheel.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         rFlywheel.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -301,8 +300,8 @@ public class OdoAuto extends OpMode {
         telemetry.addData("Intake", "%4.2f", intakeSpeed);
         telemetry.addData("Heading", "%.2f degrees", Math.toDegrees(follower.getHeading()));
         telemetry.addData("PedroPose", "X: %.2f in, \nY: %.2f in, \nHeading %.2f degrees", follower.getPose().getX(), follower.getPose().getY(),Math.toDegrees(follower.getPose().getHeading()));
-        telemetry.addData("Target Pose","X: %.2f in, \nY: %.2f in, \nHeading %.2f degrees", follower.getCurrentTargetPose().getX(),follower.getCurrentTargetPose().getY(),Math.toDegrees(follower.getCurrentTargetPose().getHeading()));
-        telemetry.addData("At Target Pose?", follower.atTarget());
+        //telemetry.addData("Target Pose","X: %.2f in, \nY: %.2f in, \nHeading %.2f degrees", follower.getCurrentTargetPose().getX(),follower.getCurrentTargetPose().getY(),Math.toDegrees(follower.getCurrentTargetPose().getHeading()));
+        //telemetry.addData("At Target Pose?", follower.atTarget());
         telemetry.addData("Auto-Aim Active", follower.isBusy() ? "Yes" : "No");
         telemetry.addData("Target Heading","%4.2f degrees", Math.toDegrees(tgtTheta));
         telemetry.addData("Target Distance","%4.2f in", distFromGoal);

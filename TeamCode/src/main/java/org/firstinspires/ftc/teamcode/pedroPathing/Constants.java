@@ -39,12 +39,12 @@ public class Constants {
             .rightFrontMotorDirection(DcMotorSimple.Direction.REVERSE)
             .rightRearMotorDirection(DcMotorSimple.Direction.REVERSE);
     public static FollowerConstants followerConstants = new FollowerConstants()
-            .mass(12.3)
+            .mass(10.8)
             .forwardZeroPowerAcceleration(-34.431)
             .lateralZeroPowerAcceleration(-59.724)
             .translationalPIDFCoefficients(new PIDFCoefficients(0.1,0.0,0.01,0.025))
             .headingPIDFCoefficients(new PIDFCoefficients(1.8,0.0,0.1,0.001))
-            .drivePIDFCoefficients(new FilteredPIDFCoefficients(10.0,0.0,10.0,0.01,1.0))
+            .drivePIDFCoefficients(new FilteredPIDFCoefficients(2,0.0,0.1,0.01,0.001))
             .centripetalScaling(0.0005)
             .turnHeadingErrorThreshold(0.01)
             ;
