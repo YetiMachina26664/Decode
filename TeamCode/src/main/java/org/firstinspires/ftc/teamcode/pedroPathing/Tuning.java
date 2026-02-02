@@ -956,6 +956,7 @@ class DriveTuner extends OpMode {
         telemetryM.debug("Driving forward?: " + forward);
         telemetryM.addData("Zero Line", 0);
         telemetryM.addData("Error", follower.errorCalculator.getDriveErrors()[1]);
+        telemetryM.addData("LF Power", follower.getMaxPowerScaling());
         telemetryM.update(telemetry);
     }
 }
