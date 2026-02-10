@@ -83,6 +83,24 @@ public class OdoAuto extends OpMode {
     boolean isBlueTeam;
     boolean backStart;
 
+    private boolean isAiming = false;
+    private boolean isMovingToBalls = false;
+    private boolean isMovingToShootZone = false;
+    private boolean isMovingToFinalPos = false;
+    private boolean collectingBalls = false;
+
+    private double shootStartTime = 0.0;
+    private double collectingStartTime = 0.0;
+
+    private Pose finalParkPose = new Pose(30.0,30.0,0.0);
+
+    private Pose ballRowPose;
+    private Pose shootZonePose;
+    private Path toBallsPath;
+    private Path toShootZonePath;
+    private Path toFinalPath;
+    private boolean extraPathsInitialized = false;
+
     Path blueTeamFront;
     Path redTeamFront;
     Path blueTeamBack;
@@ -121,7 +139,14 @@ public class OdoAuto extends OpMode {
     }
 
     public double powerRegressionPoly(double x) {
-        return (0.0014 * Math.pow(x, 2)) + (2.5179 * x) + 788.18;
+        if (x < 60) {
+            return 960;
+        } else if (x < 140) {
+            return (int) (Math.round((1287 - 14.4 * x + 0.194 * Math.pow(x, 2) - .0007 * Math.pow(x, 3))/ 20) * 20);
+        } else {
+            return 1140;
+        }
+        //return (0.0014 * Math.pow(x, 2)) + (2.5179 * x) + 788.18;
     }
 
     public double powerRegressionLin(double x) {

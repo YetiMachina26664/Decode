@@ -58,8 +58,11 @@ public class OdoDriverPostAuto extends OpMode {
     boolean dPadUpToggle;         //Tracks if D-Pad Up is toggled ON or OFF
     boolean previousDPadUpState;  //Tracks the button state from the previous loop cycle
 
-    boolean dPadULeftToggle;         //Tracks if D-Pad Up is toggled ON or OFF
+    boolean dPadLeftToggle;         //Tracks if D-Pad Up is toggled ON or OFF
     boolean previousDPadLeftState;  //Tracks the button state from the previous loop cycle
+
+    boolean dPadRightToggle;
+    boolean previousDPadRightState;
 
     boolean adjustSpeed;         //Checks whether or not speed was adjusted
 
@@ -87,6 +90,8 @@ public class OdoDriverPostAuto extends OpMode {
     boolean isAtPose = false;
 
     boolean isBlueTeam;
+
+    double adjustedSpeed = 0.0;
 
     //function to get the distance from the robot to the goal, relies on calcHypotenuse function
     public double getDist(boolean blueTeam, Follower follower) {
@@ -121,8 +126,20 @@ public class OdoDriverPostAuto extends OpMode {
     }
 
     public double powerRegressionPoly(double x) {
-        return (0.0014 * Math.pow(x, 2)) + (2.5179 * x) + 788.18;
+        if (x < 60) {
+            return 960;
+        } else if (x < 140) {
+            //reduced by 60
+            return (int) (Math.round((1227 - 14.4 * x + 0.194 * Math.pow(x, 2) - .0007 * Math.pow(x, 3))/ 20) * 20);
+        } else {
+            //reduced by 40
+            return 1140;
+        }
+        //return (0.0014 * Math.pow(x, 2)) + (2.5179 * x) + 788.18;
     }
+
+        //return (0.0014 * Math.pow(x, 2)) + (2.5179 * x) + 788.18;
+
 
     public double powerRegressionLin(double x) {
         return (3.0058 * x) + 756.46;
@@ -189,24 +206,6 @@ public class OdoDriverPostAuto extends OpMode {
         rFlywheel = hardwareMap.get(DcMotorEx.class, "rightFly");
         intake = hardwareMap.get(DcMotor.class, "intake");
 
-
-        // *** NEW: map drive motors ***
-        lf = hardwareMap.get(DcMotor.class, "lf");
-        lb = hardwareMap.get(DcMotor.class, "lb");
-        rf = hardwareMap.get(DcMotor.class, "rf");
-        rb = hardwareMap.get(DcMotor.class, "rb");
-
-        // *** NEW: force drive motors to RUN_WITHOUT_ENCODER ***
-        lf.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        lb.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        rf.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        rb.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-
-        lf.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        lb.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        rf.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        rb.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-
         //Zero power behaviors for Flywheels
         lFlywheel.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         rFlywheel.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -238,8 +237,11 @@ public class OdoDriverPostAuto extends OpMode {
         dPadUpToggle = false;         //Tracks if D-Pad Up is toggled ON or OFF
         previousDPadUpState = false;  //Tracks the button state from the previous loop cycle
 
-        dPadULeftToggle = false;         //Tracks if D-Pad Up is toggled ON or OFF
+        dPadLeftToggle = false;         //Tracks if D-Pad Up is toggled ON or OFF
         previousDPadLeftState = false;  //Tracks the button state from the previous loop cycle
+
+        dPadRightToggle = false;
+        previousDPadRightState = false;
 
         adjustSpeed = true;         //Checks whether or not speed was adjusted
 
@@ -306,8 +308,11 @@ public class OdoDriverPostAuto extends OpMode {
         if (gamepad1.dpad_up && !previousDPadUpState) { dPadUpToggle = !dPadUpToggle; }
         previousDPadUpState = gamepad1.dpad_up;
 
-        if (gamepad1.dpad_left && !previousDPadLeftState) { dPadULeftToggle = !dPadULeftToggle; }
+        if (gamepad1.dpad_left && !previousDPadLeftState) { dPadLeftToggle = !dPadLeftToggle; }
         previousDPadLeftState = gamepad1.dpad_left;
+
+        if (gamepad1.dpad_right&& !previousDPadRightState) { dPadRightToggle = !dPadRightToggle; }
+        previousDPadRightState = gamepad1.dpad_left;
 
         // --- ACTION LOGIC ---
         //Moved from outside of the While OpMode is active, do we need a while loop? Can we use
@@ -317,52 +322,26 @@ public class OdoDriverPostAuto extends OpMode {
         // Set Belt speed. X (reverse) overrides A (forward).
         //Do we want an encoder for the belt motor so that we have a constant speed, not subject to batter
         //battery power control can impact speed that the balls hit the flywheels
-        if (xPressed) {
+        if (bPressed) {
             beltSpeed = 0.5;
-        } else if (aPressed && rFlywheel.getVelocity() > 0.0) {
+        } else if (yPressed && rFlywheel.getVelocity() > 0.0) {
             beltSpeed = -0.5;
-        } else if (aPressed) {
+        } else if (yPressed) {
             beltSpeed = -0.95;
         } else {
             beltSpeed = 0.0;
         }
 
         // Set intake speed.
-        if (dPadDownToggle) {
+        if (aPressed) {
             intakeSpeed = 1.0;
         } else {
             intakeSpeed = 0.0;
         }
 
-        // Increment and Decrement Flywheel Speed
-        // max speed is 40% of max rotation, min is 10% of min rotation.
-        /* if (gamepad1.b && liftoffLow >= 0.1 && adjustSpeed) {
-            liftoffHigh -= 0.001;
-            liftoffLow -= 0.001;
-            adjustSpeed = false;
-        }
-        // Check if speed was adjusted.
-        if (gamepad1.bWasReleased()) {
-            adjustSpeed = true;
-        }
-        if (gamepad1.y & liftoffHigh <= 0.4 && adjustSpeed) {
-            liftoffHigh += 0.001;
-            liftoffLow += 0.001;
-            adjustSpeed = false;
-        }
-        // Check if speed was adjusted.
-        if (gamepad1.yWasReleased()) {
-            adjustSpeed = true;
-        }
-
-        // Check if speed was adjusted.
-        if (gamepad1.yWasReleased()) {
-            adjustSpeed = true;
-        }*/
-
         distFromGoal = getDist(isBlueTeam, follower);
 
-        liftoffPoly = powerRegressionPoly(distFromGoal);
+        liftoffPoly = powerRegressionPoly(distFromGoal) + adjustedSpeed;
         liftoffLin = powerRegressionLin(distFromGoal);
 
 
@@ -377,6 +356,26 @@ public class OdoDriverPostAuto extends OpMode {
             follower.startTeleopDrive();
         }
 
+        // Increment and Decrement Flywheel Speed
+        // max speed is 40% of max rotation, min is 10% of min rotation.
+        if (gamepad1.right_bumper && liftoffPoly >= 0.1 && adjustSpeed) {
+            adjustedSpeed += 20.0;
+            adjustSpeed = false;
+        }
+        // Check if speed was adjusted.
+        if (gamepad1.rightBumperWasReleased()) {
+            adjustSpeed = true;
+        }
+
+        if (gamepad1.left_bumper && liftoffPoly >= 0.1 && adjustSpeed) {
+            adjustedSpeed -= 20.0;
+            adjustSpeed = false;
+        }
+        // Check if speed was adjusted.
+        if (gamepad1.leftBumperWasReleased()) {
+            adjustSpeed = true;
+        }
+
         // Set Intake power percentage
         intake.setPower(intakeSpeed);
         // Set belt power percentage
@@ -384,13 +383,13 @@ public class OdoDriverPostAuto extends OpMode {
 
         //liftoff = powerRegression(getDist(isBlueTeam, follower.getPose()));
         // Set flywheel velocities (LB = High power shot, RB = Low power shot)
-        if (gamepad1.left_bumper) {
+        if (gamepad1.left_trigger > 0) {
             lFlywheel.setVelocity(liftoffPoly);
             rFlywheel.setVelocity(liftoffPoly);
-        } else if (gamepad1.right_bumper) {
-            lFlywheel.setVelocity(liftoffLin);
-            rFlywheel.setVelocity(liftoffLin);
-        } else if (dPadUpToggle) { // Make sure that reverse motion can be toggled so we don't get fouled :/
+        } else if (gamepad1.right_trigger > 0) {
+            lFlywheel.setVelocity(MAX_TICKS_PER_SECOND * 0.13);
+            rFlywheel.setVelocity(MAX_TICKS_PER_SECOND * 0.13);
+        } else if (dPadRightToggle) { // Make sure that reverse motion can be toggled so we don't get fouled :/
             lFlywheel.setVelocity(MAX_TICKS_PER_SECOND * -0.01);
             rFlywheel.setVelocity(MAX_TICKS_PER_SECOND * -0.01);
         } else { // Set 0 by default.
@@ -403,11 +402,11 @@ public class OdoDriverPostAuto extends OpMode {
         telemetry.addData("Belt", "%4.2f", beltSpeed);
         telemetry.addData("Intake", "%4.2f", intakeSpeed);
         telemetry.addData("Heading", "%.2f degrees", follower.getHeading()*57.296);
-        telemetry.addData("PedroPose", "X: %.2f in, \nY: %.2f in, \nHeading %.2f degrees", follower.getPose().getX(), follower.getPose().getY(),Math.toDegrees(follower.getPose().getHeading()));
+        telemetry.addData("PedroPose", "X: %.2f in, \nY: %.2f in, \nHeading %.2f degrees", follower.getPose().getX(), follower.getPose().getY(), Math.toDegrees(follower.getPose().getHeading()));
         telemetry.addData("Auto-Aim Active", follower.isBusy() ? "Yes" : "No");
         telemetry.addData("Target Heading","%4.2f degrees", tgtTheta*57.296);
         telemetry.addData("Target Distance","%4.2f in", distFromGoal);
-        telemetry.addData("GOAL POS","X: %4.2f in, Y: %4.2f in", REDGOAL.getX(), REDGOAL.getY());
+        telemetry.addData("GOAL POS", isBlueTeam ? BLUEGOAL.getPose() : REDGOAL.getPose());
         telemetry.addData("isBusy",follower.isBusy());
         telemetry.update();
 

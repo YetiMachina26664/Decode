@@ -38,7 +38,7 @@ public class RDriverLocBased extends LinearOpMode {
     private DcMotor leftB = null;
     private DcMotor rightF = null;
     private DcMotor rightB = null;
-    private DcMotor belt = null;
+    private DcMotorEx belt = null;
     private DcMotorEx lFlywheel = null;
     private DcMotorEx rFlywheel = null;
     private DcMotor intake = null;
@@ -47,6 +47,7 @@ public class RDriverLocBased extends LinearOpMode {
     // Flywheel Constants (Max ticks/second, velocity calculations)
     // ---DO NOT CHANGE---
     public static final double MAX_TICKS_PER_SECOND = 5376;
+    public static final double BELT_MAX_TICKS = 104.8;
     public double flywheelTargetVelocity = 0.0;
 
     //defining booleans for which alliance and where we start
@@ -127,7 +128,7 @@ public class RDriverLocBased extends LinearOpMode {
         leftB = hardwareMap.get(DcMotor.class, "lb");
         rightF = hardwareMap.get(DcMotor.class, "rf");
         rightB = hardwareMap.get(DcMotor.class, "rb");
-        belt = hardwareMap.get(DcMotor.class, "belt");
+        belt = hardwareMap.get(DcMotorEx.class, "belt");
         lFlywheel = hardwareMap.get(DcMotorEx.class, "leftFly");
         rFlywheel = hardwareMap.get(DcMotorEx.class, "rightFly");
         intake = hardwareMap.get(DcMotor.class, "intake");
@@ -144,9 +145,15 @@ public class RDriverLocBased extends LinearOpMode {
         rightF.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         rightB.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
+        belt.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+
+
         //Zero power behaviors for Flywheels
         lFlywheel.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         rFlywheel.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+
+        belt.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        belt.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         // Set Flywheel modes for velocity running instead of power percentage
         lFlywheel.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -325,7 +332,7 @@ public class RDriverLocBased extends LinearOpMode {
             // Set Intake power percentage
             intake.setPower(intakeSpeed);
             // Set belt power percentage
-            belt.setPower(beltSpeed);
+            belt.setVelocity(beltSpeed * BELT_MAX_TICKS);
 
             //liftoff = powerRegression(getDist(isBlueTeam, follower.getPose()));
             // Set flywheel velocities (LB = High power shot, RB = Low power shot)

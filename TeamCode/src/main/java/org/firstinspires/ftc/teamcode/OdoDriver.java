@@ -18,6 +18,7 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.NormalizedColorSensor;
 import com.qualcomm.robotcore.hardware.NormalizedRGBA;
+import com.qualcomm.robotcore.hardware.Servo;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
@@ -34,10 +35,12 @@ public class OdoDriver extends OpMode {
 
     private RevColorSensorV3 color;
 
-    private DcMotor belt = null;
+    private DcMotorEx belt = null;
     private DcMotorEx lFlywheel = null;
     private DcMotorEx rFlywheel = null;
     private DcMotor intake = null;
+
+    private Servo ballz = null;
 
     boolean aPressed;       // Tracks if A is toggled ON or OFF
     boolean previousAState; // Tracks the button state from the previous loop cycle
@@ -57,8 +60,13 @@ public class OdoDriver extends OpMode {
     boolean dPadUpToggle;         //Tracks if D-Pad Up is toggled ON or OFF
     boolean previousDPadUpState;  //Tracks the button state from the previous loop cycle
 
-    boolean dPadULeftToggle;         //Tracks if D-Pad Up is toggled ON or OFF
+    boolean dPadLeftToggle;         //Tracks if D-Pad Up is toggled ON or OFF
     boolean previousDPadLeftState;  //Tracks the button state from the previous loop cycle
+
+    boolean previousDPadRightState;  //Tracks the button state from the previous loop cycle
+    boolean dPadRightToggle;         //Tracks if D-Pad Up is toggled ON or OFF
+
+
 
     boolean adjustSpeed;         //Checks whether or not speed was adjusted
 
@@ -67,11 +75,13 @@ public class OdoDriver extends OpMode {
     double liftoffLin;
 
     //Intake and Belt initial speeds
-    double intakeSpeed = 0;
-    double beltSpeed = 0;
+    double intakeSpeed = 0.0;
+    double beltSpeed = 0.0;
+
+    double ballzPos = 0.0;
 
     public static final double MAX_TICKS_PER_SECOND = 5376;
-    public static final double MAX_TICKS_BELT = 88;
+    public static final double MAX_TICKS_BELT = 5376;
     public Pose REDGOAL = new Pose(144, 0);
     public Pose BLUEGOAL = new Pose(144, 144);
 
@@ -80,12 +90,11 @@ public class OdoDriver extends OpMode {
     double distFromGoal;
     double tgtTheta;
     double hypotenuse;
-
-    double XTemp;
-    double YTemp;
     boolean isAtPose = false;
 
     boolean isBlueTeam;
+
+    double adjustedSpeed = 0.0;
 
     //function to get the distance from the robot to the goal, relies on calcHypotenuse function
     public double getDist(boolean blueTeam, Follower follower) {
@@ -120,7 +129,16 @@ public class OdoDriver extends OpMode {
     }
 
     public double powerRegressionPoly(double x) {
-        return (0.0014 * Math.pow(x, 2)) + (2.5179 * x) + 788.18;
+        if (x < 60) {
+            return 960;
+        } else if (x < 140) {
+            //decreased tps by 60
+            return (int) (Math.round((1227 - 14.4 * x + 0.194 * Math.pow(x, 2) - .0007 * Math.pow(x, 3))/ 20) * 20);
+         } else {
+            //decreased by 40
+            return 1100;
+        }
+        //return (0.0014 * Math.pow(x, 2)) + (2.5179 * x) + 788.18;
     }
 
     public double powerRegressionLin(double x) {
@@ -179,18 +197,23 @@ public class OdoDriver extends OpMode {
         follower.update();
         telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
 
-        //pathChain = () -> follower.pathBuilder()
-        //        .addPath(new Path(new BezierLine()))
-
         //Hardware map declarations
-        belt = hardwareMap.get(DcMotor.class, "belt");
+        ballz = hardwareMap.get(Servo.class, "stopper");
+        belt = hardwareMap.get(DcMotorEx.class, "belt");
         lFlywheel = hardwareMap.get(DcMotorEx.class, "leftFly");
         rFlywheel = hardwareMap.get(DcMotorEx.class, "rightFly");
         intake = hardwareMap.get(DcMotor.class, "intake");
 
+        ballz.setDirection(Servo.Direction.REVERSE);
+
+        belt.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+
         //Zero power behaviors for Flywheels
         lFlywheel.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         rFlywheel.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+
+        belt.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        belt.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         // Set Flywheel modes for velocity running instead of power percentage
         lFlywheel.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -219,8 +242,11 @@ public class OdoDriver extends OpMode {
         dPadUpToggle = false;         //Tracks if D-Pad Up is toggled ON or OFF
         previousDPadUpState = false;  //Tracks the button state from the previous loop cycle
 
-        dPadULeftToggle = false;         //Tracks if D-Pad Up is toggled ON or OFF
+        dPadLeftToggle = false;         //Tracks if D-Pad Up is toggled ON or OFF
         previousDPadLeftState = false;  //Tracks the button state from the previous loop cycle
+
+        dPadRightToggle = false;
+        previousDPadRightState = false;
 
         adjustSpeed = true;         //Checks whether or not speed was adjusted
 
@@ -287,8 +313,11 @@ public class OdoDriver extends OpMode {
         if (gamepad1.dpad_up && !previousDPadUpState) { dPadUpToggle = !dPadUpToggle; }
         previousDPadUpState = gamepad1.dpad_up;
 
-        if (gamepad1.dpad_left && !previousDPadLeftState) { dPadULeftToggle = !dPadULeftToggle; }
+        if (gamepad1.dpad_left && !previousDPadLeftState) { dPadLeftToggle = !dPadLeftToggle; }
         previousDPadLeftState = gamepad1.dpad_left;
+
+        if (gamepad1.dpad_right&& !previousDPadRightState) { dPadRightToggle = !dPadRightToggle; }
+        previousDPadRightState = gamepad1.dpad_left;
 
         // --- ACTION LOGIC ---
         //Moved from outside of the While OpMode is active, do we need a while loop? Can we use
@@ -298,52 +327,32 @@ public class OdoDriver extends OpMode {
         // Set Belt speed. X (reverse) overrides A (forward).
         //Do we want an encoder for the belt motor so that we have a constant speed, not subject to batter
         //battery power control can impact speed that the balls hit the flywheels
-        if (xPressed) {
-            beltSpeed = 0.5;
-        } else if (aPressed && rFlywheel.getVelocity() > 0.0) {
-            beltSpeed = -0.5;
-        } else if (aPressed) {
-            beltSpeed = -0.95;
+        if (bPressed) {
+            beltSpeed = 1300;
+        } else if (yPressed && rFlywheel.getVelocity() > 0.0) {
+            beltSpeed = -2000;
+        } else if (yPressed) {
+            beltSpeed = -2400;
         } else {
             beltSpeed = 0.0;
         }
 
         // Set intake speed.
-        if (dPadDownToggle) {
+        if (aPressed) {
             intakeSpeed = 1.0;
         } else {
             intakeSpeed = 0.0;
         }
 
-        // Increment and Decrement Flywheel Speed
-        // max speed is 40% of max rotation, min is 10% of min rotation.
-        /* if (gamepad1.b && liftoffLow >= 0.1 && adjustSpeed) {
-            liftoffHigh -= 0.001;
-            liftoffLow -= 0.001;
-            adjustSpeed = false;
+        if (xPressed) {
+            ballzPos = 0.7;
+        } else {
+            ballzPos = 0.0;
         }
-        // Check if speed was adjusted.
-        if (gamepad1.bWasReleased()) {
-            adjustSpeed = true;
-        }
-        if (gamepad1.y & liftoffHigh <= 0.4 && adjustSpeed) {
-            liftoffHigh += 0.001;
-            liftoffLow += 0.001;
-            adjustSpeed = false;
-        }
-        // Check if speed was adjusted.
-        if (gamepad1.yWasReleased()) {
-            adjustSpeed = true;
-        }
-
-        // Check if speed was adjusted.
-        if (gamepad1.yWasReleased()) {
-            adjustSpeed = true;
-        }*/
 
         distFromGoal = getDist(isBlueTeam, follower);
 
-        liftoffPoly = powerRegressionPoly(distFromGoal);
+        liftoffPoly = powerRegressionPoly(distFromGoal) + adjustedSpeed;
         liftoffLin = powerRegressionLin(distFromGoal);
 
 
@@ -358,30 +367,54 @@ public class OdoDriver extends OpMode {
             follower.startTeleopDrive();
         }
 
+        // Increment and Decrement Flywheel Speed
+        // max speed is 40% of max rotation, min is 10% of min rotation.
+        if (gamepad1.right_bumper && liftoffPoly >= 0.1 && adjustSpeed) {
+            adjustedSpeed += 20.0;
+            adjustSpeed = false;
+        }
+        // Check if speed was adjusted.
+        if (gamepad1.rightBumperWasReleased()) {
+            adjustSpeed = true;
+        }
+
+        if (gamepad1.left_bumper && liftoffPoly >= 0.1 && adjustSpeed) {
+            adjustedSpeed -= 20.0;
+            adjustSpeed = false;
+        }
+        // Check if speed was adjusted.
+        if (gamepad1.leftBumperWasReleased()) {
+            adjustSpeed = true;
+        }
+
+        // Set ballz position
+        ballz.setPosition(ballzPos);
+
         // Set Intake power percentage
         intake.setPower(intakeSpeed);
         // Set belt power percentage
-        belt.setPower(beltSpeed);
+        belt.setVelocity(beltSpeed);
 
-        //liftoff = powerRegression(getDist(isBlueTeam, follower.getPose()));
         // Set flywheel velocities (LB = High power shot, RB = Low power shot)
-        if (gamepad1.left_bumper) {
+        if (gamepad1.right_trigger > 0) {
             lFlywheel.setVelocity(liftoffPoly);
             rFlywheel.setVelocity(liftoffPoly);
-        } else if (gamepad1.right_bumper) {
-            lFlywheel.setVelocity(liftoffLin);
-            rFlywheel.setVelocity(liftoffLin);
-        } else if (dPadUpToggle) { // Make sure that reverse motion can be toggled so we don't get fouled :/
+        } else if (gamepad1.right_trigger > 0) {
+            lFlywheel.setVelocity(MAX_TICKS_PER_SECOND * 0.13);
+            rFlywheel.setVelocity(MAX_TICKS_PER_SECOND * 0.13);
+        } else if (dPadRightToggle) { // Make sure that reverse motion can be toggled so we don't get fouled :/
             lFlywheel.setVelocity(MAX_TICKS_PER_SECOND * -0.01);
             rFlywheel.setVelocity(MAX_TICKS_PER_SECOND * -0.01);
-        } else { // Set 0 by default.
-            lFlywheel.setVelocity(0);
-            rFlywheel.setVelocity(0);
+        } else { // Set -100 by default.
+            lFlywheel.setVelocity(-100);
+            rFlywheel.setVelocity(-100);
         }
 
-        telemetry.addData("Flywheel Target TPS LIN/POLY", "%4.2f, %4.2f", liftoffLin, liftoffPoly);
+        telemetry.addData("Flywheel Target TPS", "%4.2f", liftoffPoly);
         telemetry.addData("Flywheel TPS Left/Right", "%4.2f, %4.2f", rFlywheel.getVelocity(), lFlywheel.getVelocity());
-        telemetry.addData("Belt", "%4.2f", beltSpeed);
+        telemetry.addData("Belt TPS", "%4.2f", belt.getVelocity());
+        telemetry.addData("Ballz target", "%4.2f", ballzPos);
+        telemetry.addData("Ballz", "%4.2f", ballz.getPosition());
         telemetry.addData("Intake", "%4.2f", intakeSpeed);
         telemetry.addData("Heading", "%.2f degrees", follower.getHeading()*57.296);
         telemetry.addData("PedroPose", "X: %.2f in, \nY: %.2f in, \nHeading %.2f degrees", follower.getPose().getX(), follower.getPose().getY(), Math.toDegrees(follower.getPose().getHeading()));
