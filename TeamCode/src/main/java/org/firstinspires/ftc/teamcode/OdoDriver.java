@@ -18,6 +18,7 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.NormalizedColorSensor;
 import com.qualcomm.robotcore.hardware.NormalizedRGBA;
+import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.hardware.Servo;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
@@ -132,10 +133,8 @@ public class OdoDriver extends OpMode {
         if (x < 60) {
             return 960;
         } else if (x < 140) {
-            //decreased tps by 60
             return (int) (Math.round((1227 - 14.4 * x + 0.194 * Math.pow(x, 2) - .0007 * Math.pow(x, 3))/ 20) * 20);
          } else {
-            //decreased by 40
             return 1100;
         }
         //return (0.0014 * Math.pow(x, 2)) + (2.5179 * x) + 788.18;
@@ -204,6 +203,7 @@ public class OdoDriver extends OpMode {
         rFlywheel = hardwareMap.get(DcMotorEx.class, "rightFly");
         intake = hardwareMap.get(DcMotor.class, "intake");
 
+
         ballz.setDirection(Servo.Direction.REVERSE);
 
         belt.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -220,6 +220,10 @@ public class OdoDriver extends OpMode {
         rFlywheel.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         lFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         rFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        //comment out set modes for the fly wheels above if we want to use the PID for the flywheels
+        //PIDFCoefficients newPID = new PIDFCoefficients(3.0,3.0,0.0,12.0);
+        //lFlywheel.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, newPID);
+        //rFlywheel.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, newPID);
 
         //Reverse left flywheel to oppose right
         lFlywheel.setDirection(DcMotorSimple.Direction.REVERSE);
@@ -328,7 +332,7 @@ public class OdoDriver extends OpMode {
         //Do we want an encoder for the belt motor so that we have a constant speed, not subject to batter
         //battery power control can impact speed that the balls hit the flywheels
         if (bPressed) {
-            beltSpeed = 1300;
+            beltSpeed = 2000;
         } else if (yPressed && rFlywheel.getVelocity() > 0.0) {
             beltSpeed = -2000;
         } else if (yPressed) {
@@ -406,8 +410,8 @@ public class OdoDriver extends OpMode {
             lFlywheel.setVelocity(MAX_TICKS_PER_SECOND * -0.01);
             rFlywheel.setVelocity(MAX_TICKS_PER_SECOND * -0.01);
         } else { // Set -100 by default.
-            lFlywheel.setVelocity(-100);
-            rFlywheel.setVelocity(-100);
+            lFlywheel.setVelocity(0);
+            rFlywheel.setVelocity(0);
         }
 
         telemetry.addData("Flywheel Target TPS", "%4.2f", liftoffPoly);
