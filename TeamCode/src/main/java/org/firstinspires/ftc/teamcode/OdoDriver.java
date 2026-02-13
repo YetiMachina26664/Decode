@@ -218,12 +218,12 @@ public class OdoDriver extends OpMode {
         // Set Flywheel modes for velocity running instead of power percentage
         lFlywheel.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         rFlywheel.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        lFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        rFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        //lFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        //rFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         //comment out set modes for the fly wheels above if we want to use the PID for the flywheels
-        //PIDFCoefficients newPID = new PIDFCoefficients(3.0,3.0,0.0,12.0);
-        //lFlywheel.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, newPID);
-        //rFlywheel.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, newPID);
+        PIDFCoefficients newPID = new PIDFCoefficients(3.0,0.8,0.0,10.0);
+        lFlywheel.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, newPID);
+        rFlywheel.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, newPID);
 
         //Reverse left flywheel to oppose right
         lFlywheel.setDirection(DcMotorSimple.Direction.REVERSE);
@@ -337,14 +337,20 @@ public class OdoDriver extends OpMode {
             beltSpeed = -2000;
         } else if (yPressed) {
             beltSpeed = -2400;
-        } else {
+        } else if (rFlywheel.getVelocity() > liftoffPoly * 0.9) {
+            beltSpeed = -2000;
+        }
+        else {
             beltSpeed = 0.0;
         }
 
         // Set intake speed.
         if (aPressed) {
             intakeSpeed = 1.0;
-        } else {
+        } else if (rFlywheel.getVelocity() > liftoffPoly * 0.9) {
+            intakeSpeed = 0.5;
+        }
+        else {
             intakeSpeed = 0.0;
         }
 
@@ -403,6 +409,7 @@ public class OdoDriver extends OpMode {
         if (gamepad1.right_trigger > 0) {
             lFlywheel.setVelocity(liftoffPoly);
             rFlywheel.setVelocity(liftoffPoly);
+            ballz.setPosition(0.0);
         } else if (gamepad1.right_trigger > 0) {
             lFlywheel.setVelocity(MAX_TICKS_PER_SECOND * 0.13);
             rFlywheel.setVelocity(MAX_TICKS_PER_SECOND * 0.13);
