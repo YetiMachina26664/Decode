@@ -49,7 +49,7 @@ public class OdoDriver extends OpMode {
     boolean yPressed;       // Tracks if Y is toggled ON or OFF
     boolean previousYState; // Tracks the button state from the previous loop cycle
 
-    boolean xPressed;       // Tracks if X is toggled ON or OFF
+    boolean xPressed = true;       // Tracks if X is toggled ON or OFF, start with up position
     boolean previousXState; // Tracks the button state from the previous loop cycle
 
     boolean bPressed;       // Tracks if B is toggled ON or OFF
@@ -234,7 +234,7 @@ public class OdoDriver extends OpMode {
         yPressed = false;       // Tracks if Y is toggled ON or OFF
         previousYState = false; // Tracks the button state from the previous loop cycle
 
-        xPressed = false;       // Tracks if X is toggled ON or OFF
+        xPressed = true;       // Tracks if X is toggled ON or OFF
         previousXState = false; // Tracks the button state from the previous loop cycle
 
         bPressed = false;       // Tracks if B is toggled ON or OFF
@@ -329,16 +329,12 @@ public class OdoDriver extends OpMode {
         //use the orient function??
 
         // Set Belt speed. X (reverse) overrides A (forward).
-        //Do we want an encoder for the belt motor so that we have a constant speed, not subject to batter
-        //battery power control can impact speed that the balls hit the flywheels
         if (bPressed) {
             beltSpeed = 2000;
-        } else if (yPressed && rFlywheel.getVelocity() > 0.0) {
-            beltSpeed = -2000;
         } else if (yPressed) {
             beltSpeed = -2400;
-        } else if (rFlywheel.getVelocity() > liftoffPoly * 0.9) {
-            beltSpeed = -2000;
+        } else if (lFlywheel.getVelocity() >= liftoffPoly - 40.0 && lFlywheel.getVelocity() <= liftoffPoly + 40.0 && rFlywheel.getVelocity() >= liftoffPoly - 40.0 && rFlywheel.getVelocity() <= liftoffPoly + 40.0) {
+            beltSpeed = -1800;
         }
         else {
             beltSpeed = 0.0;
@@ -347,7 +343,8 @@ public class OdoDriver extends OpMode {
         // Set intake speed.
         if (aPressed) {
             intakeSpeed = 1.0;
-        } else if (rFlywheel.getVelocity() > liftoffPoly * 0.9) {
+            beltSpeed = -2400;
+        } else if (lFlywheel.getVelocity() >= liftoffPoly - 40.0 && lFlywheel.getVelocity() <= liftoffPoly + 40.0 && rFlywheel.getVelocity() >= liftoffPoly - 40.0 && rFlywheel.getVelocity() <= liftoffPoly + 40.0) {
             intakeSpeed = 0.5;
         }
         else {
@@ -410,9 +407,6 @@ public class OdoDriver extends OpMode {
             lFlywheel.setVelocity(liftoffPoly);
             rFlywheel.setVelocity(liftoffPoly);
             ballz.setPosition(0.0);
-        } else if (gamepad1.right_trigger > 0) {
-            lFlywheel.setVelocity(MAX_TICKS_PER_SECOND * 0.13);
-            rFlywheel.setVelocity(MAX_TICKS_PER_SECOND * 0.13);
         } else if (dPadRightToggle) { // Make sure that reverse motion can be toggled so we don't get fouled :/
             lFlywheel.setVelocity(MAX_TICKS_PER_SECOND * -0.01);
             rFlywheel.setVelocity(MAX_TICKS_PER_SECOND * -0.01);
