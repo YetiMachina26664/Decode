@@ -66,8 +66,7 @@ public class OdoDriver extends OpMode {
 
     boolean previousDPadRightState;  //Tracks the button state from the previous loop cycle
     boolean dPadRightToggle;         //Tracks if D-Pad Up is toggled ON or OFF
-
-
+    boolean greenLight;              //flywheel speeds meet requirements to shoot
 
     boolean adjustSpeed;         //Checks whether or not speed was adjusted
 
@@ -81,8 +80,8 @@ public class OdoDriver extends OpMode {
 
     double ballzPos = 0.0;
 
-    public static final double MAX_TICKS_PER_SECOND = 5376;
-    public static final double MAX_TICKS_BELT = 5376;
+    public static final double MAX_TICKS_PER_SECOND = 2840;
+    public static final double MAX_TICKS_BELT = 2840;
     public Pose REDGOAL = new Pose(144, 0);
     public Pose BLUEGOAL = new Pose(144, 144);
 
@@ -91,6 +90,9 @@ public class OdoDriver extends OpMode {
     double distFromGoal;
     double tgtTheta;
     double hypotenuse;
+    double negativeTol;
+    double positiveTol;
+
     boolean isAtPose = false;
 
     boolean isBlueTeam;
@@ -131,11 +133,12 @@ public class OdoDriver extends OpMode {
 
     public double powerRegressionPoly(double x) {
         if (x < 60) {
-            return 960;
+            return 1000;
         } else if (x < 140) {
-            return (int) (Math.round((1227 - 14.4 * x + 0.194 * Math.pow(x, 2) - .0007 * Math.pow(x, 3))/ 20) * 20);
+            //return (int) (Math.round((1227 - 14.4 * x + 0.194 * Math.pow(x, 2) - .0007 * Math.pow(x, 3))/ 20) * 20);
+            return (int) (Math.round((380 + 10.2 * x )/ 20) * 20);
          } else {
-            return 1100;
+            return 1840;
         }
         //return (0.0014 * Math.pow(x, 2)) + (2.5179 * x) + 788.18;
     }
@@ -218,12 +221,12 @@ public class OdoDriver extends OpMode {
         // Set Flywheel modes for velocity running instead of power percentage
         lFlywheel.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         rFlywheel.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        //lFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        //rFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        lFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        rFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         //comment out set modes for the fly wheels above if we want to use the PID for the flywheels
-        PIDFCoefficients newPID = new PIDFCoefficients(3.0,0.8,0.0,10.0);
-        lFlywheel.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, newPID);
-        rFlywheel.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, newPID);
+        //PIDFCoefficients newPID = new PIDFCoefficients(3.0,0.8,0.0,10.0);
+        //lFlywheel.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, newPID);
+        //rFlywheel.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, newPID);
 
         //Reverse left flywheel to oppose right
         lFlywheel.setDirection(DcMotorSimple.Direction.REVERSE);
@@ -253,7 +256,7 @@ public class OdoDriver extends OpMode {
         previousDPadRightState = false;
 
         adjustSpeed = true;         //Checks whether or not speed was adjusted
-
+        greenLight = false;         //permission to shoot
     }
 
     public void init_loop() {
@@ -296,6 +299,14 @@ public class OdoDriver extends OpMode {
         //tgtTheta = getTargetAngle(isBlueTeam, follower);
         distFromGoal = getDist(isBlueTeam, follower);
         hypotenuse = calcHypotenuse(follower.getPose().getX(), follower.getPose().getY());
+        //calculate shooting speed tolerances based on distance from the goal
+        if (distFromGoal < 110) {
+            negativeTol = 20.0;
+            positiveTol = 80.0;
+        } else {
+            negativeTol = 20.0;
+            positiveTol = 60.0;
+        }
 
         // --- TOGGLE LOGIC ---
         // This detects a single button press event for each button.
@@ -328,13 +339,20 @@ public class OdoDriver extends OpMode {
         //a pedropath to get in position without changing how we handle the wheels
         //use the orient function??
 
+        //determine if there is a greenLight to shoot
+        if (lFlywheel.getVelocity() >= liftoffPoly - negativeTol && lFlywheel.getVelocity() <= liftoffPoly + positiveTol && rFlywheel.getVelocity() >= liftoffPoly - negativeTol && rFlywheel.getVelocity() <= liftoffPoly + positiveTol) {
+            greenLight = true;
+        } else {
+            greenLight = false;
+        }
+
         // Set Belt speed. X (reverse) overrides A (forward).
         if (bPressed) {
             beltSpeed = 2000;
         } else if (yPressed) {
             beltSpeed = -2400;
-        } else if (lFlywheel.getVelocity() >= liftoffPoly - 40.0 && lFlywheel.getVelocity() <= liftoffPoly + 40.0 && rFlywheel.getVelocity() >= liftoffPoly - 40.0 && rFlywheel.getVelocity() <= liftoffPoly + 40.0) {
-            beltSpeed = -1800;
+        } else if (greenLight) {
+            beltSpeed = -2100;
         }
         else {
             beltSpeed = 0.0;
@@ -344,7 +362,7 @@ public class OdoDriver extends OpMode {
         if (aPressed) {
             intakeSpeed = 1.0;
             beltSpeed = -2400;
-        } else if (lFlywheel.getVelocity() >= liftoffPoly - 40.0 && lFlywheel.getVelocity() <= liftoffPoly + 40.0 && rFlywheel.getVelocity() >= liftoffPoly - 40.0 && rFlywheel.getVelocity() <= liftoffPoly + 40.0) {
+        } else if (greenLight) {
             intakeSpeed = 0.5;
         }
         else {
@@ -413,6 +431,7 @@ public class OdoDriver extends OpMode {
         } else { // Set -100 by default.
             lFlywheel.setVelocity(0);
             rFlywheel.setVelocity(0);
+            greenLight = false;
         }
 
         telemetry.addData("Flywheel Target TPS", "%4.2f", liftoffPoly);
