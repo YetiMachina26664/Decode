@@ -53,9 +53,10 @@ public class OdoAuto extends OpMode {
     //Intake and Belt initial speeds
     double intakeSpeed = 0;
     double beltSpeed = 0;
+    double ballzPos = 0.0;
 
-    public static final double MAX_TICKS_PER_SECOND = 5376;
-    public static final double MAX_TICKS_BELT = 88;
+    public static final double MAX_TICKS_PER_SECOND = 2840;
+    public static final double MAX_TICKS_BELT = 2840;
     public static final Pose REDGOAL = new Pose(144, 0);
     public static final Pose BLUEGOAL = new Pose(144, 144);
 
@@ -64,6 +65,10 @@ public class OdoAuto extends OpMode {
     public static final Pose redFrontStart = new Pose(9.000, 56.000, Math.toRadians(0));
     public static final Pose blueBackStart = new Pose(124.000, 122.000, Math.toRadians(54));
     public static final Pose blueFrontStart = new Pose(9.000, 88.000, Math.toRadians(0));
+    //shooting poses
+    public static final Pose redFrontShoot = new Pose()
+    //collection poses
+
     //final poses
     public static final Pose redBackEnd = new Pose(100.000, 24.000, -Math.toRadians(25));
     public static final Pose redFrontEnd = new Pose(30.000, 56.000, -Math.toRadians(40));
@@ -73,6 +78,8 @@ public class OdoAuto extends OpMode {
     double distFromGoal;
     double tgtTheta;
     double hypotenuse;
+    double negativeTol;
+    double positiveTol;
 
     double XTemp;
     double YTemp;
@@ -140,11 +147,12 @@ public class OdoAuto extends OpMode {
 
     public double powerRegressionPoly(double x) {
         if (x < 60) {
-            return 960;
+            return 1000;
         } else if (x < 140) {
-            return (int) (Math.round((1287 - 14.4 * x + 0.194 * Math.pow(x, 2) - .0007 * Math.pow(x, 3))/ 20) * 20);
+            //return (int) (Math.round((1227 - 14.4 * x + 0.194 * Math.pow(x, 2) - .0007 * Math.pow(x, 3))/ 20) * 20);
+            return (int) (Math.round((380 + 10.2 * x )/ 20) * 20);
         } else {
-            return 1140;
+            return 1840;
         }
         //return (0.0014 * Math.pow(x, 2)) + (2.5179 * x) + 788.18;
     }
