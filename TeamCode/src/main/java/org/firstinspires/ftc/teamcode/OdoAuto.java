@@ -147,12 +147,12 @@ public class OdoAuto extends OpMode {
 
     public double powerRegressionPoly(double x) {
         if (x < 60) {
-            return 1000;
+            return 960;
         } else if (x < 140) {
             //return (int) (Math.round((1227 - 14.4 * x + 0.194 * Math.pow(x, 2) - .0007 * Math.pow(x, 3))/ 20) * 20);
             return (int) (Math.round((660 + 5.0 * x )/ 20) * 20);
         } else {
-            return 1840;
+            return 1360;
         }
         //return (0.0014 * Math.pow(x, 2)) + (2.5179 * x) + 788.18;
     }
