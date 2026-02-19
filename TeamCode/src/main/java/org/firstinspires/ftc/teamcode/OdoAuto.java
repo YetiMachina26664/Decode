@@ -18,6 +18,7 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.NormalizedColorSensor;
 import com.qualcomm.robotcore.hardware.NormalizedRGBA;
+import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
@@ -35,10 +36,12 @@ public class OdoAuto extends OpMode {
 
     private RevColorSensorV3 color;
 
-    private DcMotor belt = null;
+    private DcMotorEx belt = null;
     private DcMotorEx lFlywheel = null;
     private DcMotorEx rFlywheel = null;
     private DcMotor intake = null;
+
+    private Servo ballz = null;
 
     // motor declarations - copilot instructed to add
     private DcMotor lf = null;
@@ -66,8 +69,26 @@ public class OdoAuto extends OpMode {
     public static final Pose blueBackStart = new Pose(124.000, 122.000, Math.toRadians(54));
     public static final Pose blueFrontStart = new Pose(9.000, 88.000, Math.toRadians(0));
     //shooting poses
-    public static final Pose redFrontShoot = new Pose()
-    //collection poses
+    public static final Pose redFrontShoot = new Pose(12,60,-Math.toRadians(-24.44));
+    public static final Pose blueFrontShoot = new Pose(12,84,-Math.toRadians(24.44));
+    public static final Pose redBackShoot = new Pose(88,56,-Math.toRadians(-45.0));
+    public static final Pose blueBackShoot = new Pose(88,88,-Math.toRadians(45.0));
+
+    //collection start poses; Line 1 is the closest to the front (away from the goal)
+    public static final Pose redLine1CollectStart = new Pose(36,43,Math.toRadians(90.0));
+    public static final Pose redLine2CollectStart = new Pose(60,43,Math.toRadians(90.0));
+    public static final Pose redLine3CollectStart = new Pose(84,43,Math.toRadians(90.0));
+    public static final Pose blueLine1CollectStart = new Pose(36,101,-Math.toRadians(90.0));
+    public static final Pose blueLine2CollectStart = new Pose(60,101,-Math.toRadians(90.0));
+    public static final Pose blueLine3CollectStart = new Pose(84,101,-Math.toRadians(90.0));
+
+    //collection finish poses
+    public static final Pose redLine1CollectFinish = new Pose(36,16,Math.toRadians(90.0));
+    public static final Pose redLine2CollectFinish = new Pose(60,16,Math.toRadians(90.0));
+    public static final Pose redLine3CollectFinish = new Pose(84,16,Math.toRadians(90.0));
+    public static final Pose blueLine1CollectFinish = new Pose(36,128,-Math.toRadians(90.0));
+    public static final Pose blueLine2CollectFinish = new Pose(60,128,-Math.toRadians(90.0));
+    public static final Pose blueLine3CollectFinish = new Pose(84,128,-Math.toRadians(90.0));
 
     //final poses
     public static final Pose redBackEnd = new Pose(100.000, 24.000, -Math.toRadians(25));
@@ -81,37 +102,16 @@ public class OdoAuto extends OpMode {
     double negativeTol;
     double positiveTol;
 
-    double XTemp;
-    double YTemp;
-    boolean isAtPose = false;
-    private boolean pathStarted = false;
-    private boolean pathFinished = false;
 
+    boolean isAtPose = false;
+
+    boolean greenLight;
+    boolean isCollecting;
     boolean isBlueTeam;
     boolean backStart;
 
-    private boolean isAiming = false;
-    private boolean isMovingToBalls = false;
-    private boolean isMovingToShootZone = false;
-    private boolean isMovingToFinalPos = false;
-    private boolean collectingBalls = false;
-
-    private double shootStartTime = 0.0;
-    private double collectingStartTime = 0.0;
-
-    private Pose finalParkPose = new Pose(30.0,30.0,0.0);
-
-    private Pose ballRowPose;
-    private Pose shootZonePose;
-    private Path toBallsPath;
-    private Path toShootZonePath;
-    private Path toFinalPath;
-    private boolean extraPathsInitialized = false;
-
-    Path blueTeamFront;
-    Path redTeamFront;
-    Path blueTeamBack;
-    Path redTeamBack;
+    private Path initialScore;
+    private PathChain pickupStart,pickupEnd,safeZone,secondShoot;
 
     //function to get the distance from the robot to the goal, relies on calcHypotenuse function
     public double getDist(boolean blueTeam, Follower follower) {
@@ -203,29 +203,119 @@ public class OdoAuto extends OpMode {
         return pose;
     }
 
+    public void buildPaths(boolean blueTeam,boolean back) {
+        //set paths for each action
+
+        if (blueTeam && !back) {
+            initialScore = new Path(new BezierLine(blueFrontStart,blueFrontShoot));
+            initialScore.setLinearHeadingInterpolation(blueFrontStart.getHeading(),blueFrontShoot.getHeading());
+
+            pickupStart = follower.pathBuilder()
+                    .addPath(new BezierLine(blueFrontShoot,blueLine1CollectStart))
+                    .setLinearHeadingInterpolation(blueFrontShoot.getHeading(),blueLine1CollectStart.getHeading())
+                    .build();
+
+            pickupEnd = follower.pathBuilder()
+                    .addPath(new BezierLine(blueLine1CollectStart,blueLine1CollectFinish))
+                    .setLinearHeadingInterpolation(blueLine1CollectStart.getHeading(),blueLine1CollectFinish.getHeading())
+                    .build();
+
+            safeZone = follower.pathBuilder()
+                    .addPath(new BezierLine(blueLine1CollectFinish,blueLine1CollectStart))
+                    .setLinearHeadingInterpolation(blueLine1CollectFinish.getHeading(),blueLine1CollectStart.getHeading())
+                    .build();
+
+            secondShoot = follower.pathBuilder()
+                    .addPath(new BezierLine(blueLine1CollectStart,blueBackShoot))
+                    .setLinearHeadingInterpolation(blueLine1CollectStart.getHeading(),blueBackShoot.getHeading())
+                    .build();
+
+        } else if (blueTeam && back) {
+            initialScore = new Path(new BezierLine(blueBackStart,blueBackShoot));
+            initialScore.setLinearHeadingInterpolation(blueBackStart.getHeading(),blueBackShoot.getHeading());
+
+            pickupStart = follower.pathBuilder()
+                    .addPath(new BezierLine(blueBackShoot,blueLine1CollectStart))
+                    .setLinearHeadingInterpolation(blueBackShoot.getHeading(),blueLine1CollectStart.getHeading())
+                    .build();
+
+            pickupEnd = follower.pathBuilder()
+                    .addPath(new BezierLine(blueLine1CollectStart,blueLine1CollectFinish))
+                    .setLinearHeadingInterpolation(blueLine1CollectStart.getHeading(),blueLine1CollectFinish.getHeading())
+                    .build();
+
+            safeZone = follower.pathBuilder()
+                    .addPath(new BezierLine(blueLine1CollectFinish,blueLine1CollectStart))
+                    .setLinearHeadingInterpolation(blueLine1CollectFinish.getHeading(),blueLine1CollectStart.getHeading())
+                    .build();
+
+            secondShoot = follower.pathBuilder()
+                    .addPath(new BezierLine(blueLine1CollectStart,blueBackShoot))
+                    .setLinearHeadingInterpolation(blueLine1CollectStart.getHeading(),blueBackShoot.getHeading())
+                    .build();
+        } else if (!blueTeam && !back) {
+            initialScore = new Path(new BezierLine(redFrontStart,redFrontShoot));
+            initialScore.setLinearHeadingInterpolation(redFrontStart.getHeading(),redFrontShoot.getHeading());
+
+            pickupStart = follower.pathBuilder()
+                    .addPath(new BezierLine(redFrontShoot,redLine1CollectStart))
+                    .setLinearHeadingInterpolation(redFrontShoot.getHeading(),redLine1CollectStart.getHeading())
+                    .build();
+
+            pickupEnd = follower.pathBuilder()
+                    .addPath(new BezierLine(redLine1CollectStart,redLine1CollectFinish))
+                    .setLinearHeadingInterpolation(redLine1CollectStart.getHeading(),redLine1CollectFinish.getHeading())
+                    .build();
+
+            safeZone = follower.pathBuilder()
+                    .addPath(new BezierLine(redLine1CollectFinish,redLine1CollectStart))
+                    .setLinearHeadingInterpolation(redLine1CollectFinish.getHeading(),redLine1CollectStart.getHeading())
+                    .build();
+
+            secondShoot = follower.pathBuilder()
+                    .addPath(new BezierLine(redLine1CollectStart,redBackShoot))
+                    .setLinearHeadingInterpolation(redLine1CollectStart.getHeading(),redBackShoot.getHeading())
+                    .build();
+        } else {
+            initialScore = new Path(new BezierLine(redBackStart,redBackShoot));
+            initialScore.setLinearHeadingInterpolation(redBackStart.getHeading(),redBackShoot.getHeading());
+
+            pickupStart = follower.pathBuilder()
+                    .addPath(new BezierLine(redBackShoot,redLine1CollectStart))
+                    .setLinearHeadingInterpolation(redBackShoot.getHeading(),redLine1CollectStart.getHeading())
+                    .build();
+
+            pickupEnd = follower.pathBuilder()
+                    .addPath(new BezierLine(redLine1CollectStart,redLine1CollectFinish))
+                    .setLinearHeadingInterpolation(redLine1CollectStart.getHeading(),redLine1CollectFinish.getHeading())
+                    .build();
+
+            safeZone = follower.pathBuilder()
+                    .addPath(new BezierLine(redLine1CollectFinish,redLine1CollectStart))
+                    .setLinearHeadingInterpolation(redLine1CollectFinish.getHeading(),redLine1CollectStart.getHeading())
+                    .build();
+
+            secondShoot = follower.pathBuilder()
+                    .addPath(new BezierLine(redLine1CollectStart,redBackShoot))
+                    .setLinearHeadingInterpolation(redLine1CollectStart.getHeading(),redBackShoot.getHeading())
+                    .build();
+        }
+    }
+
     @Override
     public void init() {
         follower = Constants.createFollower(hardwareMap);
+
+        greenLight = false;
 
         color = hardwareMap.get(RevColorSensorV3.class, "color");
 
         follower.update();
         telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
 
-        blueTeamBack = new Path(new BezierLine(blueBackStart, blueBackEnd));
-        blueTeamBack.setLinearHeadingInterpolation(blueBackStart.getHeading(), blueBackEnd.getHeading());
-
-        blueTeamFront = new Path(new BezierLine(blueFrontStart, blueFrontEnd));
-        blueTeamFront.setLinearHeadingInterpolation(blueFrontStart.getHeading(), blueFrontEnd.getHeading());
-
-        redTeamBack = new Path(new BezierLine(redBackStart, redBackEnd));
-        redTeamBack.setLinearHeadingInterpolation(redBackStart.getHeading(), redBackEnd.getHeading());
-
-        redTeamFront = new Path(new BezierLine(redFrontStart, redFrontEnd));
-        redTeamFront.setLinearHeadingInterpolation(redFrontStart.getHeading(), redFrontEnd.getHeading());
-
         //Hardware map declarations
-        belt = hardwareMap.get(DcMotor.class, "belt");
+        ballz = hardwareMap.get(Servo.class, "stopper");
+        belt = hardwareMap.get(DcMotorEx.class, "belt");
         lFlywheel = hardwareMap.get(DcMotorEx.class, "leftFly");
         rFlywheel = hardwareMap.get(DcMotorEx.class, "rightFly");
         intake = hardwareMap.get(DcMotor.class, "intake");
@@ -247,6 +337,7 @@ public class OdoAuto extends OpMode {
         lb.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         rf.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         rb.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        belt.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         //Zero power behaviors for Flywheels
         lFlywheel.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -257,9 +348,14 @@ public class OdoAuto extends OpMode {
         rFlywheel.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         lFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         rFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        belt.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        belt.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         //Reverse left flywheel to oppose right
         lFlywheel.setDirection(DcMotorSimple.Direction.REVERSE);
+
+        //gate direction
+        ballz.setDirection(Servo.Direction.REVERSE);
     }
 
     public void init_loop() {
@@ -280,52 +376,127 @@ public class OdoAuto extends OpMode {
         telemetry.update();
     }
 
-
     @Override
     public void start() {
         runtime.reset();
+        buildPaths(isBlueTeam,backStart);
+    }
+    public void autonomousPathUpdate() {
+        switch (pathState) {
+            case 0:
+                follower.followPath(initialScore);
+                setPathState(1);
+                break;
+            case 1:
+                if (!follower.isBusy()) {
+                    if (pathTimer.getElapsedTimeSeconds() >= 5.0) {
+                        setPathState(2);
+                    }
+                    lFlywheel.setVelocity(liftoffPoly);
+                    rFlywheel.setVelocity(liftoffPoly);
+                    ballz.setPosition(0.0);
+                }
+                break;
+            case 2:
+                if (!follower.isBusy()) {
+                    lFlywheel.setVelocity(0.0);
+                    rFlywheel.setVelocity(0.0);
+                    ballz.setPosition(0.7);
+                    follower.followPath(pickupStart);
+                    setPathState(3);
+                }
+                break;
+            case 3:
+                if (!follower.isBusy()) {
+                    isCollecting = true;
+                    follower.followPath(pickupEnd);
+                    setPathState(4);
+                }
+                break;
+            case 4:
+                if (!follower.isBusy()) {
+                    isCollecting = false;
+                    follower.followPath(safeZone);
+                    setPathState(5);
+                }
+                break;
+            case 5:
+                if (!follower.isBusy()) {
+                    follower.followPath(secondShoot);
+                    setPathState(6);
+                }
+                break;
+            case 6:
+                if (!follower.isBusy()) {
+                    if (pathTimer.getElapsedTimeSeconds() >= 5.0) {
+                        setPathState(7);
+                    }
+                    lFlywheel.setVelocity(liftoffPoly);
+                    rFlywheel.setVelocity(liftoffPoly);
+                    ballz.setPosition(0.0);
+                }
+                break;
+            case 7:
+                if (!follower.isBusy()) {
+                    lFlywheel.setVelocity(0.0);
+                    rFlywheel.setVelocity(0.0);
+                    ballz.setPosition(0.7);
+                    setPathState(-1);
+                }
+                break;
+        }
     }
 
+    /**
+     * These change the states of the paths and actions. It will also reset the timers of the individual switches
+     **/
+    public void setPathState(int pState) {
+        pathState = pState;
+        pathTimer.resetTimer();
+    }
     @Override
     public void loop() {
-        //if (runtime.seconds() >= 4) {
-        //    follower.pausePathFollowing();
-        //}
+
 
         follower.update();
         telemetryM.update();
-
-        //modified so that it only goes through this followpath command once
-        if (!pathStarted) {
-            if (isBlueTeam && backStart) {
-                follower.followPath(blueTeamBack, true);
-            } else if (isBlueTeam && !backStart) {
-                follower.followPath(blueTeamFront, true);
-            } else if (!isBlueTeam && backStart) {
-                follower.followPath(redTeamBack, true);
-            } else if (!isBlueTeam && !backStart) {
-                follower.followPath(redTeamFront, true);
-            }
-            pathStarted = true;
-        }
-
-        //Check if the follower is still busy following the path
-        if (pathStarted && !pathFinished && !follower.isBusy()) {
-            pathFinished = true;
-        }
-
-        if (pathFinished) {
-            // Optional: once done, you can hold current pose or hold the goal pose
-            Pose current = follower.getPose();
-            // hold where you are
-            follower.holdPoint(new Pose(current.getX(), current.getY(), current.getHeading()));
-        }
+        autonomousPathUpdate();
 
         //Get TPS value for shooting
         tgtTheta = getTargetAngle(isBlueTeam, follower); //use this to compare to current pose and only shoot if within threshold
         distFromGoal = getDist(isBlueTeam, follower);
         liftoffPoly = powerRegressionPoly(distFromGoal);
         liftoffLin = powerRegressionLin(distFromGoal);
+
+        //calculate shooting speed tolerances based on distance from the goal
+        if (distFromGoal < 110) {
+            negativeTol = 20.0;
+            positiveTol = 80.0;
+        } else {
+            negativeTol = 20.0;
+            positiveTol = 60.0;
+        }
+
+        //determine if there is a greenLight to shoot
+        if (lFlywheel.getVelocity() >= liftoffPoly - negativeTol && lFlywheel.getVelocity() <= liftoffPoly + positiveTol && rFlywheel.getVelocity() >= liftoffPoly - negativeTol && rFlywheel.getVelocity() <= liftoffPoly + positiveTol) {
+            greenLight = true;
+        } else {
+            greenLight = false;
+        }
+
+        if (greenLight) {
+            beltSpeed = -2100;
+            intakeSpeed = 0.5;
+        } else if (isCollecting) {
+            intakeSpeed = 1.0;
+            beltSpeed = -2100;
+        } else {
+            intakeSpeed = 0.0;
+            beltSpeed = 0.0;
+        }
+        belt.setVelocity(beltSpeed);
+        intake.setPower(intakeSpeed);
+        ballz.setPosition(ballzPos);
 
         telemetry.addData("Flywheel Target TPS LIN/POLY", "%4.2f, %4.2f", liftoffLin, liftoffPoly);
         telemetry.addData("Flywheel TPS Left/Right", "%4.2f, %4.2f", rFlywheel.getVelocity(), lFlywheel.getVelocity());

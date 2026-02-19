@@ -421,13 +421,14 @@ public class OdoDriver extends OpMode {
         belt.setVelocity(beltSpeed);
 
         // Set flywheel velocities (LB = High power shot, RB = Low power shot)
+        // Set flywheel velocities (LB = High power shot, RB = Low power shot)
         if (gamepad1.right_trigger > 0) {
             lFlywheel.setVelocity(liftoffPoly);
             rFlywheel.setVelocity(liftoffPoly);
             ballz.setPosition(0.0);
-        } else if (dPadRightToggle) { // Make sure that reverse motion can be toggled so we don't get fouled :/
-            lFlywheel.setVelocity(MAX_TICKS_PER_SECOND * -0.01);
-            rFlywheel.setVelocity(MAX_TICKS_PER_SECOND * -0.01);
+        } else if (gamepad1.left_trigger > 0) {
+            lFlywheel.setVelocity(1000 + adjustedSpeed);
+            rFlywheel.setVelocity(1000 + adjustedSpeed);
         } else { // Set -100 by default.
             lFlywheel.setVelocity(0);
             rFlywheel.setVelocity(0);
