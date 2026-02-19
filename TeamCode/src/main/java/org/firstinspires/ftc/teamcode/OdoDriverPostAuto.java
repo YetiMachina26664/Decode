@@ -131,7 +131,7 @@ public class OdoDriverPostAuto extends OpMode {
             return 1000;
         } else if (x < 140) {
             //return (int) (Math.round((1227 - 14.4 * x + 0.194 * Math.pow(x, 2) - .0007 * Math.pow(x, 3))/ 20) * 20);
-            return (int) (Math.round((380 + 10.2 * x )/ 20) * 20);
+            return (int) (Math.round((660 + 5.0 * x )/ 20) * 20);
         } else {
             return 1840;
         }
@@ -154,7 +154,7 @@ public class OdoDriverPostAuto extends OpMode {
                 && (green > 72 && green < 92)
                 && (blue > 39 && blue < 59)) {
             isBlueTeam = false;
-            pose = redBackShoot;
+            pose = redFrontShoot;
             //new Pose(9, 56, 0);
             return pose;
             //Cyan
@@ -162,7 +162,7 @@ public class OdoDriverPostAuto extends OpMode {
                 && (green > 124 && green < 144)
                 && (blue > 244 && blue <= 255)) {
             isBlueTeam = true;
-            pose = blueBackShoot;
+            pose = blueFrontShoot;
             //new Pose(9, 88, 0);
             return pose;
             //Ivory

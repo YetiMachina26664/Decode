@@ -69,18 +69,18 @@ public class OdoAuto extends OpMode {
     public static final Pose blueBackStart = new Pose(124.000, 122.000, Math.toRadians(54));
     public static final Pose blueFrontStart = new Pose(9.000, 88.000, Math.toRadians(0));
     //shooting poses
-    public static final Pose redFrontShoot = new Pose(12,60,-Math.toRadians(-24.44));
+    public static final Pose redFrontShoot = new Pose(12,60,-Math.toRadians(24.44));
     public static final Pose blueFrontShoot = new Pose(12,84,-Math.toRadians(24.44));
-    public static final Pose redBackShoot = new Pose(88,56,-Math.toRadians(-45.0));
+    public static final Pose redBackShoot = new Pose(88,56,-Math.toRadians(45.0));
     public static final Pose blueBackShoot = new Pose(88,88,-Math.toRadians(45.0));
 
     //collection start poses; Line 1 is the closest to the front (away from the goal)
-    public static final Pose redLine1CollectStart = new Pose(36,43,Math.toRadians(90.0));
-    public static final Pose redLine2CollectStart = new Pose(60,43,Math.toRadians(90.0));
-    public static final Pose redLine3CollectStart = new Pose(84,43,Math.toRadians(90.0));
-    public static final Pose blueLine1CollectStart = new Pose(36,101,-Math.toRadians(90.0));
-    public static final Pose blueLine2CollectStart = new Pose(60,101,-Math.toRadians(90.0));
-    public static final Pose blueLine3CollectStart = new Pose(84,101,-Math.toRadians(90.0));
+    public static final Pose redLine1CollectStart = new Pose(36,39,Math.toRadians(90.0));
+    public static final Pose redLine2CollectStart = new Pose(60,39,Math.toRadians(90.0));
+    public static final Pose redLine3CollectStart = new Pose(84,39,Math.toRadians(90.0));
+    public static final Pose blueLine1CollectStart = new Pose(36,105,-Math.toRadians(90.0));
+    public static final Pose blueLine2CollectStart = new Pose(60,105,-Math.toRadians(90.0));
+    public static final Pose blueLine3CollectStart = new Pose(84,105,-Math.toRadians(90.0));
 
     //collection finish poses
     public static final Pose redLine1CollectFinish = new Pose(36,16,Math.toRadians(90.0));
@@ -150,7 +150,7 @@ public class OdoAuto extends OpMode {
             return 1000;
         } else if (x < 140) {
             //return (int) (Math.round((1227 - 14.4 * x + 0.194 * Math.pow(x, 2) - .0007 * Math.pow(x, 3))/ 20) * 20);
-            return (int) (Math.round((380 + 10.2 * x )/ 20) * 20);
+            return (int) (Math.round((660 + 5.0 * x )/ 20) * 20);
         } else {
             return 1840;
         }
@@ -226,8 +226,8 @@ public class OdoAuto extends OpMode {
                     .build();
 
             secondShoot = follower.pathBuilder()
-                    .addPath(new BezierLine(blueLine1CollectStart,blueBackShoot))
-                    .setLinearHeadingInterpolation(blueLine1CollectStart.getHeading(),blueBackShoot.getHeading())
+                    .addPath(new BezierLine(blueLine1CollectStart,blueFrontShoot))
+                    .setLinearHeadingInterpolation(blueLine1CollectStart.getHeading(),blueFrontShoot.getHeading())
                     .build();
 
         } else if (blueTeam && back) {
@@ -273,8 +273,8 @@ public class OdoAuto extends OpMode {
                     .build();
 
             secondShoot = follower.pathBuilder()
-                    .addPath(new BezierLine(redLine1CollectStart,redBackShoot))
-                    .setLinearHeadingInterpolation(redLine1CollectStart.getHeading(),redBackShoot.getHeading())
+                    .addPath(new BezierLine(redLine1CollectStart,redFrontShoot))
+                    .setLinearHeadingInterpolation(redLine1CollectStart.getHeading(),redFrontShoot.getHeading())
                     .build();
         } else {
             initialScore = new Path(new BezierLine(redBackStart,redBackShoot));
@@ -307,7 +307,8 @@ public class OdoAuto extends OpMode {
         follower = Constants.createFollower(hardwareMap);
 
         greenLight = false;
-
+        isCollecting = false;
+        pathTimer = new Timer();
         color = hardwareMap.get(RevColorSensorV3.class, "color");
 
         follower.update();
@@ -382,19 +383,58 @@ public class OdoAuto extends OpMode {
         buildPaths(isBlueTeam,backStart);
     }
     public void autonomousPathUpdate() {
+
+
+
+
+
+
+
         switch (pathState) {
             case 0:
-                follower.followPath(initialScore);
+                follower.followPath(initialScore,true);
                 setPathState(1);
                 break;
             case 1:
                 if (!follower.isBusy()) {
-                    if (pathTimer.getElapsedTimeSeconds() >= 5.0) {
+                    if (pathTimer.getElapsedTimeSeconds() >= 6.0) {
                         setPathState(2);
                     }
+                    //Get TPS value for shooting
+                    tgtTheta = getTargetAngle(isBlueTeam, follower); //use this to compare to current pose and only shoot if within threshold
+                    distFromGoal = getDist(isBlueTeam, follower);
+                    liftoffPoly = powerRegressionPoly(distFromGoal);
+                    liftoffLin = powerRegressionLin(distFromGoal);
+
+                    //calculate shooting speed tolerances based on distance from the goal
+                    if (distFromGoal < 110) {
+                        negativeTol = 20.0;
+                        positiveTol = 80.0;
+                    } else {
+                        negativeTol = 20.0;
+                        positiveTol = 60.0;
+                    }
+
                     lFlywheel.setVelocity(liftoffPoly);
                     rFlywheel.setVelocity(liftoffPoly);
                     ballz.setPosition(0.0);
+
+                    //determine if there is a greenLight to shoot
+                    if (lFlywheel.getVelocity() >= liftoffPoly - negativeTol && lFlywheel.getVelocity() <= liftoffPoly + positiveTol && rFlywheel.getVelocity() >= liftoffPoly - negativeTol && rFlywheel.getVelocity() <= liftoffPoly + positiveTol) {
+                        greenLight = true;
+                    } else {
+                        greenLight = false;
+                    }
+                    if (greenLight) {
+                        beltSpeed = -2100;
+                        intakeSpeed = 0.5;
+                    } else {
+                        intakeSpeed = 0.0;
+                        beltSpeed = 0.0;
+                    }
+                    belt.setVelocity(beltSpeed);
+                    intake.setPower(intakeSpeed);
+
                 }
                 break;
             case 2:
@@ -402,45 +442,91 @@ public class OdoAuto extends OpMode {
                     lFlywheel.setVelocity(0.0);
                     rFlywheel.setVelocity(0.0);
                     ballz.setPosition(0.7);
+                    belt.setVelocity(-2100);
+                    intake.setPower(1.0);
                     follower.followPath(pickupStart);
                     setPathState(3);
                 }
+
                 break;
             case 3:
                 if (!follower.isBusy()) {
-                    isCollecting = true;
-                    follower.followPath(pickupEnd);
-                    setPathState(4);
+                    if (pathTimer.getElapsedTimeSeconds() >= 1.0) {
+                        setPathState(4);
+                    }
                 }
                 break;
             case 4:
                 if (!follower.isBusy()) {
-                    isCollecting = false;
-                    follower.followPath(safeZone);
-                    setPathState(5);
+                    follower.followPath(pickupEnd, 0.4, true);
+                    if (pathTimer.getElapsedTimeSeconds() >= 4.0) {
+                        setPathState(5);
+                    }
                 }
                 break;
             case 5:
                 if (!follower.isBusy()) {
-                    follower.followPath(secondShoot);
+                    follower.followPath(safeZone);
                     setPathState(6);
                 }
                 break;
             case 6:
+
                 if (!follower.isBusy()) {
-                    if (pathTimer.getElapsedTimeSeconds() >= 5.0) {
-                        setPathState(7);
-                    }
-                    lFlywheel.setVelocity(liftoffPoly);
-                    rFlywheel.setVelocity(liftoffPoly);
-                    ballz.setPosition(0.0);
+                    belt.setVelocity(-2100);
+                    intake.setPower(1.0);
+                    follower.followPath(secondShoot,true);
+                    setPathState(7);
                 }
                 break;
             case 7:
                 if (!follower.isBusy()) {
+                    if (pathTimer.getElapsedTimeSeconds() >= 6.0) {
+                        setPathState(8);
+                    }
+                    //Get TPS value for shooting
+                    tgtTheta = getTargetAngle(isBlueTeam, follower); //use this to compare to current pose and only shoot if within threshold
+                    distFromGoal = getDist(isBlueTeam, follower);
+                    liftoffPoly = powerRegressionPoly(distFromGoal);
+                    liftoffLin = powerRegressionLin(distFromGoal);
+
+                    //calculate shooting speed tolerances based on distance from the goal
+                    if (distFromGoal < 110) {
+                        negativeTol = 20.0;
+                        positiveTol = 80.0;
+                    } else {
+                        negativeTol = 20.0;
+                        positiveTol = 60.0;
+                    }
+
+                    lFlywheel.setVelocity(liftoffPoly);
+                    rFlywheel.setVelocity(liftoffPoly);
+                    ballz.setPosition(0.0);
+
+                    //determine if there is a greenLight to shoot
+                    if (lFlywheel.getVelocity() >= liftoffPoly - negativeTol && lFlywheel.getVelocity() <= liftoffPoly + positiveTol && rFlywheel.getVelocity() >= liftoffPoly - negativeTol && rFlywheel.getVelocity() <= liftoffPoly + positiveTol) {
+                        greenLight = true;
+                    } else {
+                        greenLight = false;
+                    }
+                    if (greenLight) {
+                        beltSpeed = -2100;
+                        intakeSpeed = 0.5;
+                    } else {
+                        intakeSpeed = 0.0;
+                        beltSpeed = 0.0;
+                    }
+                    belt.setVelocity(beltSpeed);
+                    intake.setPower(intakeSpeed);
+                }
+                break;
+            case 8:
+                if (!follower.isBusy()) {
                     lFlywheel.setVelocity(0.0);
                     rFlywheel.setVelocity(0.0);
                     ballz.setPosition(0.7);
+                    belt.setVelocity(0);
+                    intake.setPower(0.0);
                     setPathState(-1);
                 }
                 break;
@@ -462,41 +548,7 @@ public class OdoAuto extends OpMode {
         telemetryM.update();
         autonomousPathUpdate();
 
-        //Get TPS value for shooting
-        tgtTheta = getTargetAngle(isBlueTeam, follower); //use this to compare to current pose and only shoot if within threshold
-        distFromGoal = getDist(isBlueTeam, follower);
-        liftoffPoly = powerRegressionPoly(distFromGoal);
-        liftoffLin = powerRegressionLin(distFromGoal);
 
-        //calculate shooting speed tolerances based on distance from the goal
-        if (distFromGoal < 110) {
-            negativeTol = 20.0;
-            positiveTol = 80.0;
-        } else {
-            negativeTol = 20.0;
-            positiveTol = 60.0;
-        }
-
-        //determine if there is a greenLight to shoot
-        if (lFlywheel.getVelocity() >= liftoffPoly - negativeTol && lFlywheel.getVelocity() <= liftoffPoly + positiveTol && rFlywheel.getVelocity() >= liftoffPoly - negativeTol && rFlywheel.getVelocity() <= liftoffPoly + positiveTol) {
-            greenLight = true;
-        } else {
-            greenLight = false;
-        }
-
-        if (greenLight) {
-            beltSpeed = -2100;
-            intakeSpeed = 0.5;
-        } else if (isCollecting) {
-            intakeSpeed = 1.0;
-            beltSpeed = -2100;
-        } else {
-            intakeSpeed = 0.0;
-            beltSpeed = 0.0;
-        }
-        belt.setVelocity(beltSpeed);
-        intake.setPower(intakeSpeed);
-        ballz.setPosition(ballzPos);
 
         telemetry.addData("Flywheel Target TPS LIN/POLY", "%4.2f, %4.2f", liftoffLin, liftoffPoly);
         telemetry.addData("Flywheel TPS Left/Right", "%4.2f, %4.2f", rFlywheel.getVelocity(), lFlywheel.getVelocity());

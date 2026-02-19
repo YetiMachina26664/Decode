@@ -136,7 +136,7 @@ public class OdoDriver extends OpMode {
             return 1000;
         } else if (x < 140) {
             //return (int) (Math.round((1227 - 14.4 * x + 0.194 * Math.pow(x, 2) - .0007 * Math.pow(x, 3))/ 20) * 20);
-            return (int) (Math.round((380 + 10.2 * x )/ 20) * 20);
+            return (int) (Math.round((660 + 5.0 * x )/ 20) * 20);
          } else {
             return 1840;
         }
